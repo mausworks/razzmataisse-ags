@@ -4,9 +4,9 @@ import { createStyle } from "../lib/createStyle"
 import Workspaces from "./Workspaces"
 import WindowTitle from "./WindowTitle"
 import Clock from "./Clock"
-import NetworkButton from "./Network"
-import BluetoothButton from "./Bluetooth"
-import VolumeButton from "./Volume"
+import NetworkButton from "./NetworkButton"
+import BluetoothButton from "./BluetoothButton"
+import VolumeButton from "./VolumeButton"
 
 const windowStyle = createStyle({
   background: "transparent",
