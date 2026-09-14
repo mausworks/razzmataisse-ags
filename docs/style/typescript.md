@@ -85,7 +85,7 @@ if (!user) return null
 ## Naming
 
 Standard JS casing (camelCase for variables/functions, PascalCase for
-types/classes). Initialisms are upper-cased -- each letter stands for a
+types/classes). Initialisms are upper-cased — each letter stands for a
 separate word (`URL`, `HTTP`, `API`).
 
 ```ts
@@ -113,6 +113,17 @@ const sorted = items.sort((left, right) => left.id - right.id)
 
 // Not
 const sorted = items.sort((a, b) => a.id - b.id)
+```
+
+## Files
+
+A component's (widget's) file name mirrors its component name.
+
+```
+widget/NetworkButton.tsx   exports   NetworkButton
+
+// not
+widget/Network.tsx         exports   NetworkButton
 ```
 
 ## JSDoc
