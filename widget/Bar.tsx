@@ -1,27 +1,27 @@
-import app from "ags/gtk4/app"
-import { Astal, Gtk, Gdk } from "ags/gtk4"
-import { createStyle } from "../lib/createStyle"
-import Workspaces from "./Workspaces"
-import WindowTitle from "./WindowTitle"
-import Clock from "./Clock"
-import NetworkButton from "./NetworkButton"
-import BluetoothButton from "./BluetoothButton"
-import VolumeButton from "./VolumeButton"
+import app from "ags/gtk4/app";
+import { Astal, Gdk } from "ags/gtk4";
+import { createStyle } from "../lib/createStyle";
+import Workspaces from "./Workspaces";
+import WindowTitle from "./WindowTitle";
+import Clock from "./Clock";
+import NetworkButton from "./NetworkButton";
+import BluetoothButton from "./BluetoothButton";
+import VolumeButton from "./VolumeButton";
 
 const windowStyle = createStyle({
   background: "transparent",
   color: "@theme_fg_color",
   fontWeight: "bold",
-})
+});
 
 const centerboxStyle = createStyle({
   background: "@theme_bg_color",
   borderRadius: 10,
   margin: 8,
-})
+});
 
 export default function Bar(gdkmonitor: Gdk.Monitor) {
-  const { TOP, LEFT, RIGHT } = Astal.WindowAnchor
+  const { TOP, LEFT, RIGHT } = Astal.WindowAnchor;
 
   return (
     <window
@@ -46,5 +46,5 @@ export default function Bar(gdkmonitor: Gdk.Monitor) {
         </box>
       </centerbox>
     </window>
-  )
+  );
 }

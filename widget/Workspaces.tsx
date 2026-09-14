@@ -1,26 +1,30 @@
-import { Gtk } from "ags/gtk4"
-import { createBinding, For } from "ags"
-import AstalHyprland from "gi://AstalHyprland?version=0.1"
-import { createStyle, baseButton } from "../lib/createStyle"
+import { createBinding, For } from "ags";
+import AstalHyprland from "gi://AstalHyprland?version=0.1";
+import { createStyle, baseButton } from "../lib/createStyle";
 
-const hyprland = AstalHyprland.get_default()!
+const hyprland = AstalHyprland.get_default()!;
 
-const pillStyle = createStyle({ ...baseButton, minWidth: 24, padding: "2px 4px", opacity: 0.5 })
+const pillStyle = createStyle({
+  ...baseButton,
+  minWidth: 24,
+  padding: "2px 4px",
+  opacity: 0.5,
+});
 const pillFocusedStyle = createStyle({
   ...baseButton,
   minWidth: 24,
   padding: "2px 4px",
   opacity: 1,
   background: "alpha(@theme_fg_color, 0.15)",
-})
+});
 
 export default function Workspaces() {
-  const workspaces = createBinding(hyprland, "workspaces")
-  const focused = createBinding(hyprland, "focusedWorkspace")
+  const workspaces = createBinding(hyprland, "workspaces");
+  const focused = createBinding(hyprland, "focusedWorkspace");
 
   const sorted = workspaces.as((ws) =>
     [...ws].sort((left, right) => left.id - right.id),
-  )
+  );
 
   return (
     <box spacing={4}>
@@ -37,5 +41,5 @@ export default function Workspaces() {
         )}
       </For>
     </box>
-  )
+  );
 }

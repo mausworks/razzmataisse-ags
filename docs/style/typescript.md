@@ -7,7 +7,7 @@ Prefer arrow functions over `function` declarations/expressions, except for
 (generators, hoisting, dynamic `this`).
 
 ```ts
-const add = (a: number, b: number) => a + b
+const add = (a: number, b: number) => a + b;
 
 export default function Bar() {
   /* ... */
@@ -18,10 +18,10 @@ Prefer type inference over explicit return type annotations.
 
 ```ts
 // Prefer
-const add = (a: number, b: number) => a + b
+const add = (a: number, b: number) => a + b;
 
 // Not
-const add = (a: number, b: number): number => a + b
+const add = (a: number, b: number): number => a + b;
 ```
 
 When a value's inferred type needs to be pinned down, prefer a type
@@ -29,10 +29,10 @@ assertion (`as Foo`) on the value over annotating the function's return type.
 
 ```ts
 // Prefer
-const makeUser = (name: string) => ({ name, id: crypto.randomUUID() }) as User
+const makeUser = (name: string) => ({ name, id: crypto.randomUUID() }) as User;
 
 // Not
-const makeUser = (name: string): User => ({ name, id: crypto.randomUUID() })
+const makeUser = (name: string): User => ({ name, id: crypto.randomUUID() });
 ```
 
 ## Control flow
@@ -46,15 +46,15 @@ const ICONS = {
   wifi: "network-wireless-symbolic",
   wired: "network-wired-symbolic",
   offline: "network-offline-symbolic",
-} as const
+} as const;
 
-const icon = ICONS[state]
+const icon = ICONS[state];
 ```
 
 Prefer a ternary over a full function body for simple two-branch cases.
 
 ```ts
-const label = isConnected ? "Connected" : "Disconnected"
+const label = isConnected ? "Connected" : "Disconnected";
 ```
 
 Prefer `if`/`else if`/`else` once a function has three or more distinct
@@ -64,13 +64,13 @@ two branches. Use braces for `if`/`else if`/`else` blocks.
 ```ts
 function classify(n: number) {
   if (n < 0) {
-    return "negative"
+    return "negative";
   } else if (n === 0) {
-    return "zero"
+    return "zero";
   } else if (n < 10) {
-    return "small"
+    return "small";
   } else {
-    return "large"
+    return "large";
   }
 }
 ```
@@ -79,7 +79,7 @@ A brace-less, one-line `if` is only allowed for early returns (guard
 clauses, null checks, etc.).
 
 ```ts
-if (!user) return null
+if (!user) return null;
 ```
 
 ## Naming
@@ -93,15 +93,15 @@ function parseURL(url: string) {
   /* ... */
 }
 
-const res = await httpGET(url)
+const res = await httpGET(url);
 ```
 
 Clippings (a single word truncated, not multiple words compressed) are not
 initialisms and stay lower-case, e.g. `id` (short for "identifier").
 
 ```ts
-const userId = getUserId()
-const { id } = user
+const userId = getUserId();
+const { id } = user;
 ```
 
 Avoid one-character variable names, including short-lived callback/closure
@@ -109,10 +109,10 @@ parameters. Prefer a short but descriptive name instead.
 
 ```ts
 // Prefer
-const sorted = items.sort((left, right) => left.id - right.id)
+const sorted = items.sort((left, right) => left.id - right.id);
 
 // Not
-const sorted = items.sort((a, b) => a.id - b.id)
+const sorted = items.sort((a, b) => a.id - b.id);
 ```
 
 ## Files
@@ -141,7 +141,7 @@ before the description. A single-line JSDoc stays on one line.
 
 Examples go in an `@example` tag, followed by a fenced code block.
 
-```ts
+````ts
 /**
  * Formats a duration in milliseconds as `mm:ss`.
  *
@@ -150,4 +150,4 @@ Examples go in an `@example` tag, followed by a fenced code block.
  * formatDuration(65_000) // "01:05"
  * ```
  */
-```
+````

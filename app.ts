@@ -1,8 +1,8 @@
-import app from "ags/gtk4/app"
-import Bar from "./widget/Bar"
+import app from "ags/gtk4/app";
+import Bar from "./widget/Bar";
 
 app.start({
   main: () => {
-    app.get_monitors().map(Bar)
+    app.get_monitors().map(Bar);
   },
-})
+});
