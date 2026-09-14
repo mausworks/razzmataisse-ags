@@ -1,8 +1,10 @@
 import { Astal, Gtk } from "ags/gtk4"
 import { createBinding } from "ags"
 import AstalWp from "gi://AstalWp?version=0.1"
+import { createStyle, baseButton } from "../lib/createStyle"
 
 const wp = AstalWp.get_default()!
+const buttonStyle = createStyle(baseButton)
 
 export default function VolumeButton() {
   const volumeIcon = createBinding(wp, "defaultSpeaker", "volumeIcon")
@@ -10,11 +12,12 @@ export default function VolumeButton() {
   const mute = createBinding(wp, "defaultSpeaker", "mute")
 
   return (
-    <menubutton cssName="volume">
+    <menubutton>
       <image iconName={volumeIcon.as((i) => i ?? "audio-volume-muted-symbolic")} />
       <popover>
         <box spacing={8} widthRequest={200}>
           <button
+            css={buttonStyle}
             onClicked={() => {
               const speaker = wp.defaultSpeaker
               if (speaker) speaker.mute = !speaker.mute

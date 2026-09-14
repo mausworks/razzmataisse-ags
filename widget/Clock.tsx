@@ -5,7 +5,7 @@ export default function Clock() {
   const time = createPoll("", 1000, "date +'%H:%M  %a %d %b'")
 
   return (
-    <menubutton cssName="clock" hexpand halign={Gtk.Align.CENTER}>
+    <menubutton hexpand halign={Gtk.Align.CENTER}>
       <label label={time} />
       <popover>
         <Gtk.Calendar />

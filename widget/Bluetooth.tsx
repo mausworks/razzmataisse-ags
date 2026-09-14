@@ -1,8 +1,10 @@
 import { Gtk } from "ags/gtk4"
 import { createBinding, createComputed, For } from "ags"
 import AstalBluetooth from "gi://AstalBluetooth?version=0.1"
+import { createStyle, baseButton } from "../lib/createStyle"
 
 const bluetooth = AstalBluetooth.get_default()!
+const buttonStyle = createStyle(baseButton)
 
 export default function BluetoothButton() {
   const isPowered = createBinding(bluetooth, "isPowered")
@@ -28,7 +30,7 @@ export default function BluetoothButton() {
   }
 
   return (
-    <menubutton cssName="bluetooth">
+    <menubutton>
       <image iconName={iconName} />
       <popover>
         <box orientation={Gtk.Orientation.VERTICAL} spacing={8} widthRequest={220}>
@@ -45,7 +47,7 @@ export default function BluetoothButton() {
           <box orientation={Gtk.Orientation.VERTICAL} spacing={2}>
             <For each={knownDevices}>
               {(device) => (
-                <button onClicked={() => toggle(device)}>
+                <button css={buttonStyle} onClicked={() => toggle(device)}>
                   <box spacing={6}>
                     <label
                       label={createBinding(device, "alias")}

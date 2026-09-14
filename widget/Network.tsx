@@ -2,8 +2,10 @@ import { Gtk } from "ags/gtk4"
 import { createBinding, createComputed, For } from "ags"
 import { execAsync } from "ags/process"
 import AstalNetwork from "gi://AstalNetwork?version=0.1"
+import { createStyle, baseButton } from "../lib/createStyle"
 
 const network = AstalNetwork.get_default()
+const buttonStyle = createStyle(baseButton)
 
 export default function NetworkButton() {
   const wifi = createBinding(network, "wifi")
@@ -41,7 +43,7 @@ export default function NetworkButton() {
   }
 
   return (
-    <menubutton cssName="network">
+    <menubutton>
       <image iconName={iconName} />
       <popover>
         <box orientation={Gtk.Orientation.VERTICAL} spacing={8} widthRequest={220}>
@@ -56,6 +58,7 @@ export default function NetworkButton() {
               }}
             />
             <button
+              css={buttonStyle}
               onClicked={() => network.wifi?.scan()}
               tooltipText="Scan"
             >
@@ -66,7 +69,7 @@ export default function NetworkButton() {
           <box orientation={Gtk.Orientation.VERTICAL} spacing={2}>
             <For each={apList}>
               {(ap) => (
-                <button onClicked={() => connect(ap.ssid!)}>
+                <button css={buttonStyle} onClicked={() => connect(ap.ssid!)}>
                   <box spacing={6}>
                     <image iconName={createBinding(ap, "iconName")} />
                     <label label={ap.ssid ?? ""} hexpand halign={Gtk.Align.START} />
