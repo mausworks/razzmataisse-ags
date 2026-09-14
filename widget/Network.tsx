@@ -21,9 +21,14 @@ export default function NetworkButton() {
   )
 
   const statusLabel = createComputed(() => {
-    const s = ssid()
-    if (s) return `${s}  (${strength()}%)`
-    return wiredIcon() ? "Wired connection" : "Not connected"
+    const currentSsid = ssid()
+    if (currentSsid) {
+      return `${currentSsid}  (${strength()}%)`
+    } else if (wiredIcon()) {
+      return "Wired connection"
+    } else {
+      return "Not connected"
+    }
   })
 
   const apList = accessPoints.as((list) => {
@@ -33,14 +38,13 @@ export default function NetworkButton() {
       const existing = bySsid.get(ap.ssid)
       if (!existing || ap.strength > existing.strength) bySsid.set(ap.ssid, ap)
     }
-    return [...bySsid.values()].sort((a, b) => b.strength - a.strength)
+    return [...bySsid.values()].sort((left, right) => right.strength - left.strength)
   })
 
-  function connect(ssid: string) {
+  const connect = (ssid: string) =>
     execAsync(["nmcli", "device", "wifi", "connect", ssid]).catch((err) =>
       console.error(`failed to connect to ${ssid}:`, err),
     )
-  }
 
   return (
     <menubutton>
@@ -52,7 +56,7 @@ export default function NetworkButton() {
           <box spacing={8}>
             <label label="Wi-Fi" hexpand halign={Gtk.Align.START} />
             <switch
-              active={wifiEnabled.as((v) => v ?? false)}
+              active={wifiEnabled.as((enabled) => enabled ?? false)}
               onNotifyActive={(self) => {
                 if (network.wifi) network.wifi.enabled = self.active
               }}
@@ -73,7 +77,11 @@ export default function NetworkButton() {
                   <box spacing={6}>
                     <image iconName={createBinding(ap, "iconName")} />
                     <label label={ap.ssid ?? ""} hexpand halign={Gtk.Align.START} />
-                    <label label={createBinding(ap, "strength").as((s) => `${s}%`)} />
+                    <label
+                      label={createBinding(ap, "strength").as(
+                        (apStrength) => `${apStrength}%`,
+                      )}
+                    />
                   </box>
                 </button>
               )}

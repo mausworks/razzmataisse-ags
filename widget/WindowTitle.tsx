@@ -9,7 +9,7 @@ const titleStyle = createStyle({ opacity: 0.7 })
 
 export default function WindowTitle() {
   const title = createBinding(hyprland, "focusedClient", "title").as(
-    (t) => t || "Desktop",
+    (clientTitle) => clientTitle || "Desktop",
   )
 
   return (

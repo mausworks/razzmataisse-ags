@@ -13,7 +13,7 @@ export default function VolumeButton() {
 
   return (
     <menubutton>
-      <image iconName={volumeIcon.as((i) => i ?? "audio-volume-muted-symbolic")} />
+      <image iconName={volumeIcon.as((icon) => icon ?? "audio-volume-muted-symbolic")} />
       <popover>
         <box spacing={8} widthRequest={200}>
           <button
@@ -24,8 +24,8 @@ export default function VolumeButton() {
             }}
           >
             <image
-              iconName={mute.as((m) =>
-                m ? "audio-volume-muted-symbolic" : "audio-volume-high-symbolic",
+              iconName={mute.as((muted) =>
+                muted ? "audio-volume-muted-symbolic" : "audio-volume-high-symbolic",
               )}
             />
           </button>
@@ -33,7 +33,7 @@ export default function VolumeButton() {
             hexpand
             min={0}
             max={1}
-            value={volume.as((v) => v ?? 0)}
+            value={volume.as((volumeValue) => volumeValue ?? 0)}
             onValueChanged={(self: Astal.Slider) => {
               const speaker = wp.defaultSpeaker
               if (speaker) speaker.volume = self.value

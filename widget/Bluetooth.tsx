@@ -12,22 +12,23 @@ export default function BluetoothButton() {
   const devices = createBinding(bluetooth, "devices")
 
   const iconName = createComputed(() => {
-    if (!isPowered()) return "bluetooth-disabled-symbolic"
-    if (isConnected()) return "bluetooth-active-symbolic"
-    return "bluetooth-symbolic"
+    if (!isPowered()) {
+      return "bluetooth-disabled-symbolic"
+    } else if (isConnected()) {
+      return "bluetooth-active-symbolic"
+    } else {
+      return "bluetooth-symbolic"
+    }
   })
 
   const knownDevices = devices.as((list) =>
-    [...list].filter((d) => d.paired || d.connected),
+    [...list].filter((device) => device.paired || device.connected),
   )
 
-  function toggle(device: AstalBluetooth.Device) {
-    if (device.connected) {
-      device.disconnect_device().catch((err) => console.error(err))
-    } else {
-      device.connect_device().catch((err) => console.error(err))
-    }
-  }
+  const toggle = (device: AstalBluetooth.Device) =>
+    device.connected
+      ? device.disconnect_device().catch((err) => console.error(err))
+      : device.connect_device().catch((err) => console.error(err))
 
   return (
     <menubutton>
@@ -55,8 +56,8 @@ export default function BluetoothButton() {
                       halign={Gtk.Align.START}
                     />
                     <label
-                      label={createBinding(device, "connected").as((c) =>
-                        c ? "Connected" : "",
+                      label={createBinding(device, "connected").as((deviceConnected) =>
+                        deviceConnected ? "Connected" : "",
                       )}
                     />
                   </box>
