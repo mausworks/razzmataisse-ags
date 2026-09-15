@@ -115,6 +115,15 @@ const writeUnionType = (
 app.start({
   instanceName: "gtk-typegen",
   main: () => {
+    // get_style_context()/lookup_color() are deprecated since GTK 4.10 and
+    // documented to be removed in GTK 5, with no redirect to a replacement
+    // (unlike e.g. get_color() -> Gtk.Widget.get_color()) -- GTK's named
+    // `@color` lookup mechanism itself is being replaced by standard CSS
+    // custom properties, which only resolve in context and aren't
+    // queryable in isolation. There's currently no GTK5-safe way to ask
+    // "does a color named X exist"; this is a dev-time generator script,
+    // not runtime code, so it's fine to keep relying on this until GTK
+    // ships an alternative.
     const styleContext = new Gtk.Box().get_style_context();
 
     const colors = COLOR_CANDIDATES.filter(
