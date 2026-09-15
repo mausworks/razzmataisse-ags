@@ -1,5 +1,5 @@
 import { Gtk, Gdk } from "ags/gtk4";
-import { hasKey, isPlainObject } from "./util";
+import { assert, hasKey, isPlainObject } from "./util";
 
 export type CSSValue = string | number;
 
@@ -10,9 +10,12 @@ export type CSSDeclarations = Record<string, CSSValue | undefined>;
  * A style block: flat declarations, plus optional nested rules for keys
  * starting with `"&"` (e.g. `"&:hover"`, `"&> a"`), following common
  * CSS-in-JS convention. `&` is replaced with the rule's own selector.
- * Nested values are declarations objects, never raw CSS strings.
+ * Nested values are themselves style blocks, and may nest further (e.g.
+ * `"&:hover": { "& > a": { ... } }`) -- never raw CSS strings.
  */
-export type StyleBlock = Record<string, CSSValue | CSSDeclarations | undefined>;
+export type StyleBlock = {
+  [key: string]: CSSValue | StyleBlock | undefined;
+};
 
 export type Subselector = `&${string}`;
 
@@ -27,13 +30,13 @@ export type CSSInput<V extends Record<string, StyleBlock>> = {
 export const toPX = (value: number) => `${value}px` as PXValue;
 
 const TRANSFORM_NUMBER = {
-  "padding": toPX,
-  "margin": toPX,
-  "borderRadius": toPX,
-  "borderWidth": toPX,
-  "minWidth": toPX,
-  "minHeight": toPX,
-  "fontSize": toPX,
+  padding: toPX,
+  margin: toPX,
+  borderRadius: toPX,
+  borderWidth: toPX,
+  minWidth: toPX,
+  minHeight: toPX,
+  fontSize: toPX,
 } as const;
 
 const transformNumber = (key: string, value: number) =>
@@ -42,7 +45,7 @@ const transformNumber = (key: string, value: number) =>
 const toKebab = (key: string) =>
   key.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
 
-const stringifyCSSValue = (key: string, value: CSSValue) => 
+const stringifyCSSValue = (key: string, value: CSSValue) =>
   typeof value === "number" ? transformNumber(key, value) : value;
 
 /**
@@ -65,43 +68,34 @@ const isSubselector = (key: string): key is Subselector => key.startsWith("&");
 
 const splitStyleBlock = (block: StyleBlock) => {
   const declarations: CSSDeclarations = {};
-  const nested: Record<string, CSSDeclarations> = {};
+  const nested: Record<string, StyleBlock> = {};
 
   for (const [key, value] of Object.entries(block)) {
     if (isSubselector(key)) {
-      if (!isPlainObject(value)) {
-        throw new Error(
-          `createCSS: "${key}" must be a declarations object, got ${typeof value}.`,
-        );
-      }
-      for (const nestedKey of Object.keys(value)) {
-        if (isSubselector(nestedKey)) {
-          throw new Error(
-            `createCSS: "${key}" contains "${nestedKey}" -- "&"-nesting is ` +
-              `only supported one level deep.`,
-          );
-        }
-      }
-      nested[key] = value as CSSDeclarations;
-    } else if (isPlainObject(value)) {
-      throw new Error(
+      assert(
+        isPlainObject(value),
+        `createCSS: "${key}" must be a declarations object, got ${typeof value}.`,
+      );
+      nested[key] = value as StyleBlock;
+    } else {
+      assert(
+        !isPlainObject(value),
         `createCSS: "${key}" holds an object, not a CSS value. Only "&"-` +
           `prefixed keys may (e.g. "&:hover") -- did you forget the "&"?`,
       );
-    } else {
-      declarations[key] = value;
+      declarations[key] = value as CSSValue | undefined;
     }
   }
 
   return { declarations, nested };
 };
 
-const buildRules = (selector: string, block: StyleBlock) => {
+const buildRules = (selector: string, block: StyleBlock): string => {
   const { declarations, nested } = splitStyleBlock(block);
   const rules = [`${selector} { ${createStyle(declarations)} }`];
 
-  for (const [key, props] of Object.entries(nested)) {
-    rules.push(`${key.replace(/^&/, selector)} { ${createStyle(props)} }`);
+  for (const [key, childBlock] of Object.entries(nested)) {
+    rules.push(buildRules(key.replace(/^&/, selector), childBlock));
   }
 
   return rules.join("\n");
@@ -163,7 +157,9 @@ export const createCSS = <V extends Record<string, StyleBlock>>({
     Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
   );
 
-  return (...activeVariants: Array<keyof V | undefined | null | false | 0 | "">) =>
+  return (
+    ...activeVariants: Array<keyof V | undefined | null | false | 0 | "">
+  ) =>
     [
       className,
       ...activeVariants
