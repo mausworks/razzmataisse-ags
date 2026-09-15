@@ -1,3 +1,4 @@
+import { Accessor, createComputed } from "ags";
 import { Gtk, Gdk } from "ags/gtk4";
 import { assert, isPlainObject } from "../util";
 import type {
@@ -8,6 +9,8 @@ import type {
   StyleBlock,
   CSSInput,
   Subselector,
+  ClassComposer,
+  VariantInput,
 } from "./types";
 
 export * from "./types";
@@ -87,14 +90,16 @@ const registeredClasses = new Set<string>();
 
 /**
  * Defines a GTK CSS class, plus any number of named variants, and returns a
- * function for composing the resulting class names.
+ * `cx()` function for composing the resulting class names.
  *
  * Must be called exactly once per class name, at module scope -- calling it
  * from inside a render function re-registers (and throws) on every run.
  *
  * @returns A function that, given any combination of variant names, returns
  * the class list to apply. Falsy arguments are skipped, so conditional
- * variants can be written as `cx(active && "active")`.
+ * variants can be written as `cx(active && "active")`. Given a mix of plain
+ * variant names and `Accessor`s of them, returns a reactive
+ * `Accessor<string>` instead, recomputed whenever any of them change.
  * @throws If `class` was already registered by an earlier call.
  *
  * @example
@@ -107,6 +112,7 @@ const registeredClasses = new Set<string>();
  * cx() // "Pill"
  * cx("focused") // "Pill Pill--focused"
  * cx(isFocused && "focused") // conditional, classnames-style
+ * cx(focused.as((f) => f?.id === ws.id && "focused")) // Accessor<string>
  * ```
  */
 export const defineStyle = <V extends Record<string, StyleBlock>>({
@@ -136,15 +142,31 @@ export const defineStyle = <V extends Record<string, StyleBlock>>({
     Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
   );
 
-  return (
-    ...activeVariants: Array<keyof V | undefined | null | false | 0 | "">
-  ) =>
+  const compose = (variants: Array<VariantInput<V>>) =>
     [
       className,
-      ...activeVariants
+      ...variants
         .filter((name): name is keyof V => Boolean(name))
         .map((name) => `${className}--${String(name)}`),
     ].join(" ");
+
+  const cx = (
+    ...variants: Array<VariantInput<V> | Accessor<VariantInput<V>>>
+  ) => {
+    if (!variants.some((variant) => variant instanceof Accessor)) {
+      return compose(variants as Array<VariantInput<V>>);
+    }
+
+    return createComputed(() =>
+      compose(
+        variants.map((variant) =>
+          variant instanceof Accessor ? variant() : variant,
+        ),
+      ),
+    );
+  };
+
+  return cx as ClassComposer<V>;
 };
 
 const isSubselector = (key: string): key is Subselector => key.startsWith("&");

@@ -1,3 +1,4 @@
+import type { Accessor } from "ags";
 import { ThemeColor } from "../gtk";
 
 /**
@@ -217,3 +218,27 @@ export type CSSInput<V extends Record<string, StyleBlock>> = {
    */
   variants?: V;
 };
+
+/**
+ * A single variant name, or a falsy value -- filtered out by `cx()`, so
+ * conditional variants can be written as `cx(active && "active")`.
+ */
+export type VariantInput<V extends Record<string, StyleBlock>> =
+  keyof V | undefined | null | false | 0 | "";
+
+/**
+ * The `cx()` function `defineStyle()` returns: given any combination of
+ * variant names, composes the class list to apply. Falsy arguments are
+ * skipped, so conditional variants can be written as `cx(active && "active")`.
+ * Given a mix of plain variant names and `Accessor`s of them, returns a
+ * reactive `Accessor<string>` instead of a plain `string`.
+ */
+export type ClassComposer<V extends Record<string, StyleBlock>> = {
+  (...variants: Array<VariantInput<V>>): string;
+  (
+    ...variants: Array<VariantInput<V> | Accessor<VariantInput<V>>>
+  ): Accessor<string>;
+};
+
+/** The variant names a `ClassComposer` accepts. */
+export type VariantsOf<T> = T extends ClassComposer<infer V> ? keyof V : never;

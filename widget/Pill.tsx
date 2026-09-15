@@ -1,5 +1,5 @@
-import { Accessor, type Node } from "ags";
-import { defineStyle } from "../lib/css";
+import type { Accessor, Node } from "ags";
+import { defineStyle, type VariantsOf } from "../lib/css";
 
 const cx = defineStyle({
   class: "Pill",
@@ -19,10 +19,7 @@ const cx = defineStyle({
   },
 });
 
-type Variant = Exclude<
-  Parameters<typeof cx>[number],
-  undefined | null | false | 0 | ""
->;
+type Variant = VariantsOf<typeof cx>;
 
 type PillProps = {
   variant?: Variant | Accessor<Variant | undefined>;
@@ -32,10 +29,5 @@ type PillProps = {
 };
 
 export default function Pill({ variant, ...props }: PillProps) {
-  const className =
-    variant instanceof Accessor
-      ? variant.as((value) => cx(value))
-      : cx(variant);
-
-  return <button class={className} {...props} />;
+  return <button class={cx(variant)} {...props} />;
 }
