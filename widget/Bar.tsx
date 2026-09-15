@@ -1,5 +1,6 @@
 import app from "ags/gtk4/app";
 import { Astal, Gdk } from "ags/gtk4";
+import GLib from "gi://GLib";
 import { defineStyle } from "../lib/css";
 import Workspaces from "./Workspaces";
 import WindowTitle from "./WindowTitle";
@@ -26,6 +27,15 @@ const containerClass = defineStyle({
 
 const { TOP, LEFT, RIGHT } = Astal.WindowAnchor;
 
+// In dev mode, the bar gets killed and relaunched on every source change.
+// An EXCLUSIVE surface reserves screen space, so Hyprland re-tiles every
+// other window each time that reservation appears/disappears. NORMAL still
+// anchors the bar in place without reserving space, so restarts don't
+// shuffle the rest of the layout.
+const exclusivity = GLib.getenv("AGS_DEV")
+  ? Astal.Exclusivity.NORMAL
+  : Astal.Exclusivity.EXCLUSIVE;
+
 export type BarProps = {
   monitor: Gdk.Monitor;
 };
@@ -37,7 +47,7 @@ export default function Bar({ monitor }: BarProps) {
       name="bar"
       class={windowClass}
       gdkmonitor={monitor}
-      exclusivity={Astal.Exclusivity.EXCLUSIVE}
+      exclusivity={exclusivity}
       anchor={TOP | LEFT | RIGHT}
       application={app}
     >
