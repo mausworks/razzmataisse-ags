@@ -2,9 +2,7 @@ import { Gtk } from "ags/gtk4";
 import { createBinding, createComputed, For } from "ags";
 import { execAsync } from "ags/process";
 import AstalNetwork from "gi://AstalNetwork?version=0.1";
-import { createStyle, baseButton } from "../lib/createStyle";
-
-const buttonStyle = createStyle(baseButton);
+import Pill from "./Pill";
 
 const createNetworkModel = () => {
   const network = AstalNetwork.get_default();
@@ -97,15 +95,15 @@ export default function NetworkButton() {
               active={enabled}
               onNotifyActive={(self) => (self.active ? enable() : disable())}
             />
-            <button css={buttonStyle} onClicked={scan} tooltipText="Scan">
+            <Pill onClicked={scan} tooltipText="Scan">
               <image iconName="view-refresh-symbolic" />
-            </button>
+            </Pill>
           </box>
 
           <box orientation={Gtk.Orientation.VERTICAL} spacing={2}>
             <For each={accessPoints}>
               {(ap) => (
-                <button css={buttonStyle} onClicked={() => connect(ap.ssid!)}>
+                <Pill onClicked={() => connect(ap.ssid!)}>
                   <box spacing={6}>
                     <image iconName={createBinding(ap, "iconName")} />
                     <label
@@ -119,7 +117,7 @@ export default function NetworkButton() {
                       )}
                     />
                   </box>
-                </button>
+                </Pill>
               )}
             </For>
           </box>

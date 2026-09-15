@@ -1,6 +1,6 @@
 import app from "ags/gtk4/app";
 import { Astal, Gdk } from "ags/gtk4";
-import { createStyle } from "../lib/createStyle";
+import { createStyle } from "../lib/style";
 import Workspaces from "./Workspaces";
 import WindowTitle from "./WindowTitle";
 import Clock from "./Clock";
@@ -15,20 +15,22 @@ const windowStyle = createStyle({
 });
 
 const centerboxStyle = createStyle({
-  background: "@theme_bg_color",
-  borderRadius: 10,
-  margin: 8,
+  padding: "0 12px",
 });
 
-export default function Bar(gdkmonitor: Gdk.Monitor) {
-  const { TOP, LEFT, RIGHT } = Astal.WindowAnchor;
+const { TOP, LEFT, RIGHT } = Astal.WindowAnchor;
 
+export interface BarProps {
+  monitor: Gdk.Monitor;
+};
+
+export default function Bar({ monitor }: BarProps) {
   return (
     <window
       visible
       name="bar"
       css={windowStyle}
-      gdkmonitor={gdkmonitor}
+      gdkmonitor={monitor}
       exclusivity={Astal.Exclusivity.EXCLUSIVE}
       anchor={TOP | LEFT | RIGHT}
       application={app}

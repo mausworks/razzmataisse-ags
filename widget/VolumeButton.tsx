@@ -1,9 +1,7 @@
 import { Astal } from "ags/gtk4";
 import { createBinding } from "ags";
 import AstalWp from "gi://AstalWp?version=0.1";
-import { createStyle, baseButton } from "../lib/createStyle";
-
-const buttonStyle = createStyle(baseButton);
+import Pill from "./Pill";
 
 const createVolumeModel = () => {
   const wp = AstalWp.get_default()!;
@@ -51,9 +49,9 @@ export default function VolumeButton() {
       <image iconName={iconName} />
       <popover>
         <box spacing={8} widthRequest={200}>
-          <button css={buttonStyle} onClicked={toggleMute}>
+          <Pill onClicked={toggleMute}>
             <image iconName={muteIconName} />
-          </button>
+          </Pill>
           <slider
             hexpand
             min={0}
