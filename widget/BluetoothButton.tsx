@@ -3,12 +3,12 @@ import { createBinding, createComputed, For } from "ags";
 import AstalBluetooth from "gi://AstalBluetooth?version=0.1";
 import Pill from "./Pill";
 
-const createBluetoothModel = () => {
-  const bluetooth = AstalBluetooth.get_default()!;
+const Bluetooth = AstalBluetooth.get_default()!;
 
-  const powered = createBinding(bluetooth, "isPowered");
-  const isConnected = createBinding(bluetooth, "isConnected");
-  const devices = createBinding(bluetooth, "devices");
+const createBluetoothModel = () => {
+  const powered = createBinding(Bluetooth, "isPowered");
+  const isConnected = createBinding(Bluetooth, "isConnected");
+  const devices = createBinding(Bluetooth, "devices");
 
   const iconName = createComputed(() => {
     if (!powered()) {
@@ -28,14 +28,12 @@ const createBluetoothModel = () => {
 };
 
 const createBluetoothActions = () => {
-  const bluetooth = AstalBluetooth.get_default()!;
-
   const enable = () => {
-    if (bluetooth.adapter) bluetooth.adapter.powered = true;
+    if (Bluetooth.adapter) Bluetooth.adapter.powered = true;
   };
 
   const disable = () => {
-    if (bluetooth.adapter) bluetooth.adapter.powered = false;
+    if (Bluetooth.adapter) Bluetooth.adapter.powered = false;
   };
 
   const toggle = (device: AstalBluetooth.Device) =>

@@ -1,7 +1,7 @@
 import { Accessor, type Node } from "ags";
-import { createCSS } from "../lib/style";
+import { defineStyle } from "../lib/css";
 
-const cx = createCSS({
+const cx = defineStyle({
   class: "Pill",
   style: {
     borderRadius: 8,
@@ -19,7 +19,10 @@ const cx = createCSS({
   },
 });
 
-type Variant = Exclude<Parameters<typeof cx>[number], undefined | null | false | 0 | "">;
+type Variant = Exclude<
+  Parameters<typeof cx>[number],
+  undefined | null | false | 0 | ""
+>;
 
 type PillProps = {
   variant?: Variant | Accessor<Variant | undefined>;
@@ -30,7 +33,9 @@ type PillProps = {
 
 export default function Pill({ variant, ...props }: PillProps) {
   const className =
-    variant instanceof Accessor ? variant.as((value) => cx(value)) : cx(variant);
+    variant instanceof Accessor
+      ? variant.as((value) => cx(value))
+      : cx(variant);
 
   return <button class={className} {...props} />;
 }

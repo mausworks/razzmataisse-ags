@@ -4,13 +4,13 @@ import { execAsync } from "ags/process";
 import AstalNetwork from "gi://AstalNetwork?version=0.1";
 import Pill from "./Pill";
 
-const createNetworkModel = () => {
-  const network = AstalNetwork.get_default();
+const Network = AstalNetwork.get_default();
 
-  const wifiIcon = createBinding(network, "wifi", "iconName");
-  const wiredIcon = createBinding(network, "wired", "iconName");
-  const ssid = createBinding(network, "wifi", "ssid");
-  const strength = createBinding(network, "wifi", "strength");
+const createNetworkModel = () => {
+  const wifiIcon = createBinding(Network, "wifi", "iconName");
+  const wiredIcon = createBinding(Network, "wired", "iconName");
+  const ssid = createBinding(Network, "wifi", "ssid");
+  const strength = createBinding(Network, "wifi", "strength");
 
   const iconName = createComputed(
     () => wifiIcon() ?? wiredIcon() ?? "network-offline-symbolic",
@@ -18,6 +18,7 @@ const createNetworkModel = () => {
 
   const statusLabel = createComputed(() => {
     const currentSsid = ssid();
+
     if (currentSsid) {
       return `${currentSsid}  (${strength()}%)`;
     } else if (wiredIcon()) {
@@ -27,11 +28,11 @@ const createNetworkModel = () => {
     }
   });
 
-  const enabled = createBinding(network, "wifi", "enabled").as(
+  const enabled = createBinding(Network, "wifi", "enabled").as(
     (wifiEnabled) => wifiEnabled ?? false,
   );
 
-  const accessPoints = createBinding(network, "wifi", "accessPoints").as(
+  const accessPoints = createBinding(Network, "wifi", "accessPoints").as(
     (list) => {
       const bySsid = new Map<string, AstalNetwork.AccessPoint>();
       for (const ap of list ?? []) {
@@ -50,7 +51,7 @@ const createNetworkModel = () => {
 };
 
 const createWifiActions = () => {
-  const { wifi } = AstalNetwork.get_default();
+  const { wifi } = Network;
 
   const enable = () => {
     if (!wifi) return;

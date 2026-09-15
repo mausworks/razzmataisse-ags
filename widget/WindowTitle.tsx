@@ -1,20 +1,25 @@
 import Pango from "gi://Pango";
 import { createBinding } from "ags";
 import AstalHyprland from "gi://AstalHyprland?version=0.1";
-import { createStyle } from "../lib/style";
+import { defineStyle } from "../lib/css";
 
-const hyprland = AstalHyprland.get_default()!;
+const Hyprland = AstalHyprland.get_default()!;
 
-const titleStyle = createStyle({ opacity: 0.7 });
+const titleClass = defineStyle({
+  class: "WindowTitle",
+  style: {
+    opacity: 0.7,
+  },
+})();
 
 export default function WindowTitle() {
-  const title = createBinding(hyprland, "focusedClient", "title").as(
+  const title = createBinding(Hyprland, "focusedClient", "title").as(
     (clientTitle) => clientTitle || "Desktop",
   );
 
   return (
     <label
-      css={titleStyle}
+      class={titleClass}
       label={title}
       ellipsize={Pango.EllipsizeMode.END}
       maxWidthChars={60}

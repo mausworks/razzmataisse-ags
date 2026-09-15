@@ -1,6 +1,6 @@
 import app from "ags/gtk4/app";
 import { Astal, Gdk } from "ags/gtk4";
-import { createStyle } from "../lib/style";
+import { defineStyle } from "../lib/css";
 import Workspaces from "./Workspaces";
 import WindowTitle from "./WindowTitle";
 import Clock from "./Clock";
@@ -8,19 +8,25 @@ import NetworkButton from "./NetworkButton";
 import BluetoothButton from "./BluetoothButton";
 import VolumeButton from "./VolumeButton";
 
-const windowStyle = createStyle({
-  background: "transparent",
-  color: "@theme_fg_color",
-  fontWeight: "bold",
-});
+const windowClass = defineStyle({
+  class: "Bar",
+  style: {
+    background: "transparent",
+    color: "@theme_fg_color",
+    fontWeight: "bold",
+  },
+})();
 
-const centerboxStyle = createStyle({
-  padding: "0 12px",
-});
+const containerClass = defineStyle({
+  class: "BarContainer",
+  style: {
+    padding: "0 12px",
+  },
+})();
 
 const { TOP, LEFT, RIGHT } = Astal.WindowAnchor;
 
-export interface BarProps {
+export type BarProps = {
   monitor: Gdk.Monitor;
 };
 
@@ -29,13 +35,13 @@ export default function Bar({ monitor }: BarProps) {
     <window
       visible
       name="bar"
-      css={windowStyle}
+      class={windowClass}
       gdkmonitor={monitor}
       exclusivity={Astal.Exclusivity.EXCLUSIVE}
       anchor={TOP | LEFT | RIGHT}
       application={app}
     >
-      <centerbox css={centerboxStyle}>
+      <centerbox class={containerClass}>
         <box $type="start" spacing={8}>
           <Workspaces />
           <WindowTitle />
