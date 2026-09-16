@@ -1,7 +1,7 @@
 import { Gtk } from "ags/gtk4";
 import { createBinding, createComputed, For } from "ags";
 import AstalBluetooth from "gi://AstalBluetooth?version=0.1";
-import Pill from "./Pill";
+import Pill, { MenuPill } from "./Pill";
 
 const Bluetooth = AstalBluetooth.get_default()!;
 
@@ -49,7 +49,7 @@ export default function BluetoothButton() {
   const { enable, disable, toggle } = createBluetoothActions();
 
   return (
-    <menubutton>
+    <MenuPill>
       <image iconName={iconName} />
       <popover>
         <box
@@ -88,6 +88,6 @@ export default function BluetoothButton() {
           </box>
         </box>
       </popover>
-    </menubutton>
+    </MenuPill>
   );
 }

@@ -2,7 +2,7 @@ import { Gtk } from "ags/gtk4";
 import { createBinding, createComputed, For } from "ags";
 import { execAsync } from "ags/process";
 import AstalNetwork from "gi://AstalNetwork?version=0.1";
-import Pill from "./Pill";
+import Pill, { MenuPill } from "./Pill";
 
 const Network = AstalNetwork.get_default();
 
@@ -80,7 +80,7 @@ export default function NetworkButton() {
   const { enable, disable, scan, connect } = createWifiActions();
 
   return (
-    <menubutton>
+    <MenuPill>
       <image iconName={iconName} />
       <popover>
         <box
@@ -124,6 +124,6 @@ export default function NetworkButton() {
           </box>
         </box>
       </popover>
-    </menubutton>
+    </MenuPill>
   );
 }

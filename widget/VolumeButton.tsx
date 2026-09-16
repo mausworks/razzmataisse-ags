@@ -1,7 +1,7 @@
 import { Astal } from "ags/gtk4";
 import { createBinding } from "ags";
 import AstalWp from "gi://AstalWp?version=0.1";
-import Pill from "./Pill";
+import Pill, { MenuPill } from "./Pill";
 
 const createVolumeModel = () => {
   const wp = AstalWp.get_default()!;
@@ -45,7 +45,7 @@ export default function VolumeButton() {
   const { toggleMute, setVolume } = createVolumeActions();
 
   return (
-    <menubutton>
+    <MenuPill>
       <image iconName={iconName} />
       <popover>
         <box spacing={8} widthRequest={200}>
@@ -61,6 +61,6 @@ export default function VolumeButton() {
           />
         </box>
       </popover>
-    </menubutton>
+    </MenuPill>
   );
 }
