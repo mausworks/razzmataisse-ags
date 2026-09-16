@@ -9,6 +9,7 @@ const titleClass = defineStyle({
   class: "WindowTitle",
   style: {
     opacity: 0.7,
+    fontWeight: "normal",
   },
 })();
 

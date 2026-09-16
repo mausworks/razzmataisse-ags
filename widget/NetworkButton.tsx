@@ -80,7 +80,7 @@ export default function NetworkButton() {
   const { enable, disable, scan, connect } = createWifiActions();
 
   return (
-    <MenuPill>
+    <MenuPill variant="icon">
       <image iconName={iconName} />
       <popover>
         <box

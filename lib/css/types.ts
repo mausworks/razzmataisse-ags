@@ -27,6 +27,14 @@ export type PXValue = `${number}px`;
 /** A GTK theme color reference (`@name`), or any other CSS color string. */
 export type CSSColor = `@${ThemeColor}` | (string & {});
 
+export type FontFeatureSettingName = "liga" | "tnum" | "scmp" | "swsh";
+
+export type FontFeatureSettingValue = "on" | "off" | `${number}`;
+
+export type FontFeatureSetting =
+  | `"${FontFeatureSettingName}"`
+  | `"${FontFeatureSettingName}" ${FontFeatureSettingValue}`;
+
 /** A named easing keyword, or a raw `cubic-bezier(...)`/`steps(...)` call. */
 export type TimingFunction =
   | "ease"
@@ -80,7 +88,7 @@ export type StandardCSSProperties = Partial<{
   fontVariantNumeric: string;
   fontVariantAlternates: string;
   fontVariantEastAsian: string;
-  fontFeatureSettings: string;
+  fontFeatureSettings: FontFeatureSetting | (string & {});
   fontVariationSettings: string;
   font: string;
   caretColor: CSSColor;
@@ -193,14 +201,22 @@ export type CSSProperties = StandardCSSProperties & GTKCssProperties;
 /** The name of any property in `CSSProperties`. */
 export type CSSProperty = keyof CSSProperties;
 
-/** A nested selector key, e.g. `"&:hover"` or `"& > a"` -- see `StyleBlock`. */
+/**
+ * A nested selector key, e.g. `"&:hover"` or `"& > a"` -- see `StyleBlock`.
+ * May itself be a comma-separated selector list, e.g.
+ * `"&,&:not(button) > button"`; each branch gets `&` resolved separately.
+ */
 export type Subselector = `&${string}`;
 
 /**
  * A style block: CSS declarations, plus optional nested rules keyed by a
  * `Subselector`. `&` in a nested key is replaced with the enclosing rule's
  * own selector, and nested blocks may themselves nest further, e.g.
- * `{ "&:hover": { "& > a": { color: "red" } } }`.
+ * `{ "&:hover": { "& > a": { color: "red" } } }`. Resolution is
+ * comma-list-aware in both directions, so hover/active rules nested under a
+ * multi-branch key still reach every branch, e.g.
+ * `{ "&,&:not(button) > button": { "&:hover": { ... } } }` produces
+ * `.Class:hover, .Class:not(button) > button:hover`.
  */
 export type StyleBlock = CSSProperties & {
   [key: Subselector]: StyleBlock;
@@ -227,18 +243,36 @@ export type VariantInput<V extends Record<string, StyleBlock>> =
   keyof V | undefined | null | false | 0 | "";
 
 /**
+ * Whatever a single argument to `cx()` may be: a plain variant name (or
+ * falsy value), an `Accessor` of one, or an arbitrarily nested (and/or
+ * `Accessor`-wrapped) array mixing either -- `cx()` flattens the whole tree
+ * before composing the class list, so e.g. `cx([a, [b && "b", accessor]])`
+ * and `cx(listAccessor)` both work.
+ */
+export type VariantTree<V extends Record<string, StyleBlock>> =
+  VariantInput<V> | Accessor<VariantTree<V>> | ReadonlyArray<VariantTree<V>>;
+
+/**
  * The `cx()` function `defineStyle()` returns: given any combination of
  * variant names, composes the class list to apply. Falsy arguments are
  * skipped, so conditional variants can be written as `cx(active && "active")`.
- * Given a mix of plain variant names and `Accessor`s of them, returns a
- * reactive `Accessor<string>` instead of a plain `string`.
+ * Given anything reactive anywhere in the argument tree (an `Accessor`, or
+ * an array containing one), returns a reactive `Accessor<string>` instead
+ * of a plain `string`.
  */
 export type ClassComposer<V extends Record<string, StyleBlock>> = {
   (...variants: Array<VariantInput<V>>): string;
-  (
-    ...variants: Array<VariantInput<V> | Accessor<VariantInput<V>>>
-  ): Accessor<string>;
+  (...variants: Array<VariantTree<V>>): Accessor<string>;
 };
 
 /** The variant names a `ClassComposer` accepts. */
 export type VariantsOf<T> = T extends ClassComposer<infer V> ? keyof V : never;
+
+/**
+ * Everything a `ClassComposer`'s arguments accept, for reuse as a
+ * component's own `variant` prop type -- like `VariantsOf`, but also
+ * allows falsy values, `Accessor`s, and nested arrays of either, matching
+ * `cx()` itself.
+ */
+export type VariantProp<T> =
+  T extends ClassComposer<infer V> ? VariantTree<V> : never;

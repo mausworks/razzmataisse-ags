@@ -1,18 +1,36 @@
 import { Gtk } from "ags/gtk4";
 import { createPoll } from "ags/time";
 import { MenuPill } from "./Pill";
+import { defineStyle } from "../lib/css";
+import { For } from "gnim";
 
-export default function Clock() {
-  const time = createPoll("", 1000, "date +'%H:%M  %a %d %b'");
+const labelClass = defineStyle({
+  class: "ClockLabel",
+  style: {
+    fontFeatureSettings: '"tnum" 1',
+  },
+})();
+
+export default function Clock({
+  dateFormat = "%a %d %b",
+  timeFormat = "%H:%M",
+}) {
+  const fullDate = createPoll(
+    "",
+    1000,
+    `date +'${dateFormat} | ${timeFormat}'`,
+  ).as((value) => value.split(" | "));
 
   return (
-    <box hexpand halign={Gtk.Align.CENTER}>
-      <MenuPill>
-        <label label={time} />
-        <popover>
-          <Gtk.Calendar />
-        </popover>
-      </MenuPill>
-    </box>
+    <MenuPill variant="text">
+      <box spacing={8}>
+        <For each={fullDate}>
+          {(part) => <label label={part} class={labelClass} />}
+        </For>
+      </box>
+      <popover>
+        <Gtk.Calendar />
+      </popover>
+    </MenuPill>
   );
 }

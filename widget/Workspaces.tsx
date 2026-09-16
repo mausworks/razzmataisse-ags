@@ -1,12 +1,21 @@
 import { createBinding, For } from "ags";
 import AstalHyprland from "gi://AstalHyprland?version=0.1";
 import Pill from "./Pill";
+import Lua from "../lib/lua";
+import { defineStyle } from "../lib/css";
 
-const hyprland = AstalHyprland.get_default()!;
+const Hyprland = AstalHyprland.get_default()!;
+
+const labelClass = defineStyle({
+  class: "WorkspaceLabel",
+  style: {
+    fontFeatureSettings: '"tnum" 1',
+  },
+})();
 
 export default function Workspaces() {
-  const focused = createBinding(hyprland, "focusedWorkspace");
-  const workspaces = createBinding(hyprland, "workspaces").as((ws) =>
+  const active = createBinding(Hyprland, "focusedWorkspace");
+  const workspaces = createBinding(Hyprland, "workspaces").as((ws) =>
     [...ws].sort((left, right) => left.id - right.id),
   );
 
@@ -15,12 +24,19 @@ export default function Workspaces() {
       <For each={workspaces}>
         {(ws) => (
           <Pill
-            variant={focused.as((focusedWs) =>
-              focusedWs?.id === ws.id ? "focused" : undefined,
+            variant={active.as(({ id }) =>
+              id === ws.id
+                ? (["active", "icon"] as const)
+                : (["icon"] as const),
             )}
-            onClicked={() => hyprland.dispatch("workspace", String(ws.id))}
+            onClicked={() =>
+              Hyprland.dispatch(
+                "hl.dsp.focus",
+                Lua.stringify({ workspace: ws.id }),
+              )
+            }
           >
-            <label label={String(ws.id)} />
+            <label class={labelClass} label={String(ws.id)} />
           </Pill>
         )}
       </For>

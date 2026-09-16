@@ -45,19 +45,20 @@ export default function VolumeButton() {
   const { toggleMute, setVolume } = createVolumeActions();
 
   return (
-    <MenuPill>
+    <MenuPill variant="icon">
       <image iconName={iconName} />
       <popover>
         <box spacing={8} widthRequest={200}>
           <Pill onClicked={toggleMute}>
             <image iconName={muteIconName} />
           </Pill>
+
           <slider
             hexpand
             min={0}
             max={1}
             value={volume}
-            onValueChanged={(self: Astal.Slider) => setVolume(self.value)}
+            onValueChanged={({ value }: Astal.Slider) => setVolume(value)}
           />
         </box>
       </popover>

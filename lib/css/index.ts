@@ -11,6 +11,7 @@ import type {
   Subselector,
   ClassComposer,
   VariantInput,
+  VariantTree,
 } from "./types";
 
 export * from "./types";
@@ -150,20 +151,35 @@ export const defineStyle = <V extends Record<string, StyleBlock>>({
         .map((name) => `${className}--${String(name)}`),
     ].join(" ");
 
-  const cx = (
-    ...variants: Array<VariantInput<V> | Accessor<VariantInput<V>>>
-  ) => {
-    if (!variants.some((variant) => variant instanceof Accessor)) {
-      return compose(variants as Array<VariantInput<V>>);
+  // Recursively checks the whole argument tree -- not just the top-level
+  // arguments -- since an array can itself hold an `Accessor` (or another
+  // array holding one), any of which makes the composed result reactive.
+  const isReactive = (value: VariantTree<V>): boolean =>
+    value instanceof Accessor ||
+    (Array.isArray(value) && value.some(isReactive));
+
+  // Recursively unwraps `Accessor`s and flattens nested arrays into a flat
+  // list of variant names (and falsy values, still left for `compose` to
+  // filter). Unwrapping happens by calling the `Accessor`, so this must
+  // only ever run inside `createComputed` when the tree is reactive, for
+  // dependency tracking to pick up the read.
+  const flatten = (value: VariantTree<V>): Array<VariantInput<V>> => {
+    if (value instanceof Accessor) return flatten(value());
+    if (Array.isArray(value)) return value.flatMap(flatten);
+
+    // TS can't narrow away the array branch of a self-referential generic
+    // alias like `VariantTree<V>` from an `Array.isArray` guard -- the
+    // two checks above are exhaustive for everything else `VariantTree`
+    // allows, so this is a plain `VariantInput` by elimination.
+    return [value as VariantInput<V>];
+  };
+
+  const cx = (...variants: Array<VariantTree<V>>) => {
+    if (!isReactive(variants)) {
+      return compose(flatten(variants));
     }
 
-    return createComputed(() =>
-      compose(
-        variants.map((variant) =>
-          variant instanceof Accessor ? variant() : variant,
-        ),
-      ),
-    );
+    return createComputed(() => compose(flatten(variants)));
   };
 
   return cx as ClassComposer<V>;
@@ -198,12 +214,56 @@ const splitStyleBlock = (block: StyleBlock) => {
   return { declarations, nested };
 };
 
+/**
+ * Splits a selector list on its top-level commas -- ones not inside a
+ * pseudo-class's parens, e.g. `:not(a, b)` -- so each branch can have `&`
+ * resolved independently.
+ */
+const splitSelectorList = (text: string): string[] => {
+  const branches: string[] = [];
+  let depth = 0;
+  let start = 0;
+
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === "(") {
+      depth++;
+    } else if (text[i] === ")") {
+      depth--;
+    } else if (text[i] === "," && depth === 0) {
+      branches.push(text.slice(start, i));
+      start = i + 1;
+    }
+  }
+
+  branches.push(text.slice(start));
+
+  return branches.map((branch) => branch.trim());
+};
+
+/**
+ * Resolves a nested rule's `&`-prefixed key against its enclosing selector.
+ * Both may be comma-separated selector lists (e.g. a key of
+ * `"&,&:not(button) > button"` under an enclosing selector that is itself
+ * a list from an outer resolution) -- every combination of a key branch's
+ * `&`s substituted with a selector branch is expanded, so a further-nested
+ * key (e.g. `"&:hover"`) still reaches every branch instead of only the
+ * last one.
+ */
+const resolveSelector = (selector: string, key: string): string =>
+  splitSelectorList(key)
+    .flatMap((keyBranch) =>
+      splitSelectorList(selector).map((selectorBranch) =>
+        keyBranch.replace(/&/g, selectorBranch),
+      ),
+    )
+    .join(", ");
+
 const buildRules = (selector: string, block: StyleBlock): string => {
   const { declarations, nested } = splitStyleBlock(block);
   const rules = [`${selector} { ${inlineCSS(declarations)} }`];
 
   for (const [key, childBlock] of Object.entries(nested)) {
-    rules.push(buildRules(key.replace(/^&/, selector), childBlock));
+    rules.push(buildRules(resolveSelector(selector, key), childBlock));
   }
 
   return rules.join("\n");

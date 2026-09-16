@@ -49,7 +49,7 @@ export default function BluetoothButton() {
   const { enable, disable, toggle } = createBluetoothActions();
 
   return (
-    <MenuPill>
+    <MenuPill variant="icon">
       <image iconName={iconName} />
       <popover>
         <box

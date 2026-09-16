@@ -1,68 +1,58 @@
-import type { Accessor, Node } from "ags";
-import { defineStyle, type VariantsOf } from "../lib/css";
+import type { Node } from "ags";
+import { defineStyle, type VariantProp } from "../lib/css";
+import { alpha } from "../lib/css/color";
 
 const cx = defineStyle({
   class: "Pill",
   style: {
-    borderRadius: 9999,
-    margin: 2,
-    minWidth: 24,
-    padding: "2px 4px",
-    opacity: 0.5,
-    background: "transparent",
-    border: "none",
-    "&:hover": { background: "alpha(@theme_fg_color, 0.08)" },
-    "&:active": { background: "alpha(@theme_fg_color, 0.16)" },
-    // A `menubutton`'s actual clickable surface is an internal `button`
-    // node (GTK's node tree is `menubutton > button.toggle`), which paints
-    // its own theme chrome independently of this class -- mirror the same
-    // look there so `MenuPill` matches `Pill`.
-    "& button": {
-      margin: 0,
-      padding: 0,
-      minWidth: 0,
+    "&:not(menubutton), & > button": {
+      fontWeight: "bold",
       borderRadius: 9999,
+      margin: "0 4px",
+      minWidth: 24,
+      padding: "2px 4px",
       background: "transparent",
       border: "none",
-      "&:hover": { background: "alpha(@theme_fg_color, 0.08)" },
-      "&:active": { background: "alpha(@theme_fg_color, 0.16)" },
+      color: alpha("@theme_fg_color", 0.8),
+    },
+    "&:not(menubutton):hover, & > button:hover": {
+      background: alpha("@accent_color", 0.08),
+    },
+    "&:not(menubutton):active, & > button:active": {
+      background: alpha("@accent_color", 0.16),
     },
   },
   variants: {
-    focused: { opacity: 1, background: "alpha(@theme_fg_color, 0.15)" },
-    // For persistent status readouts (clock, network/bluetooth/volume)
-    // rather than discrete actions -- always fully legible, with a
-    // text-shaped hover/active affordance (a color shift, no filled
-    // circle) instead of the background pill used for icon/action pills.
     text: {
-      opacity: 1,
-      borderRadius: 6,
-      background: "transparent",
-      "&:hover": { color: "@accent_color" },
-      "&:active": {
-        color: "@accent_color",
-        background: "alpha(@accent_color, 0.12)",
+      "&:not(menubutton), & > button": {
+        fontWeight: "normal",
       },
-      "& button": {
-        margin: 0,
-        padding: 0,
-        minWidth: 0,
-        borderRadius: 6,
+    },
+    icon: {
+      "&:not(menubutton), & > button": {
         background: "transparent",
-        "&:hover": { color: "@accent_color", background: "transparent" },
-        "&:active": {
-          color: "@accent_color",
-          background: "alpha(@accent_color, 0.12)",
-        },
+        fontWeight: "normal",
+        padding: 4,
+      },
+      "&:not(menubutton):hover, &:hover": {
+        color: "@accent_color",
+      },
+      "&:not(menubutton):active, &:active": {
+        color: "@accent_color",
+        background: "alpha(@accent_color, 0.5)",
+      },
+    },
+    active: {
+      "&:not(menubutton), & > button": {
+        opacity: 1,
+        background: alpha("@theme_fg_color", 0.1),
       },
     },
   },
 });
 
-type Variant = VariantsOf<typeof cx>;
-
 type PillStyleProps = {
-  variant?: Variant | Accessor<Variant | undefined>;
+  variant?: VariantProp<typeof cx>;
   tooltipText?: string;
   children?: Node | Node[];
 };
@@ -75,11 +65,7 @@ export default function Pill({ variant, ...props }: PillProps) {
   return <button class={cx(variant)} {...props} />;
 }
 
-/**
- * Same class and props as `Pill`, but renders a `menubutton`. Defaults to
- * the `text` variant, since menu buttons in this bar are persistent status
- * readouts rather than discrete actions.
- */
-export function MenuPill({ variant = "text", ...props }: PillStyleProps) {
+/** Same class and props as `Pill`, but renders a `menubutton`. */
+export function MenuPill({ variant, ...props }: PillStyleProps) {
   return <menubutton class={cx(variant)} {...props} />;
 }

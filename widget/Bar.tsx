@@ -8,6 +8,7 @@ import Clock from "./Clock";
 import NetworkButton from "./NetworkButton";
 import BluetoothButton from "./BluetoothButton";
 import VolumeButton from "./VolumeButton";
+import { alpha, shade } from "../lib/css/color";
 
 const windowClass = defineStyle({
   class: "Bar",
@@ -21,7 +22,13 @@ const windowClass = defineStyle({
 const containerClass = defineStyle({
   class: "BarContainer",
   style: {
-    padding: "0 12px",
+    padding: "4px 12px",
+    background: alpha(shade("@theme_bg_color", -0.8), 0.25),
+    transition: "background 300ms ease-in",
+    "&:hover": {
+      background: alpha(shade("@theme_bg_color", -0.8), 0.5),
+      transition: "background 600ms ease-out",
+    },
   },
 })();
 
@@ -32,7 +39,7 @@ const { TOP, LEFT, RIGHT } = Astal.WindowAnchor;
 // other window each time that reservation appears/disappears. NORMAL still
 // anchors the bar in place without reserving space, so restarts don't
 // shuffle the rest of the layout.
-const exclusivity = GLib.getenv("AGS_DEV")
+const BAR_EXCLUSIVITY = GLib.getenv("AGS_DEV")
   ? Astal.Exclusivity.NORMAL
   : Astal.Exclusivity.EXCLUSIVE;
 
@@ -47,20 +54,22 @@ export default function Bar({ monitor }: BarProps) {
       name="bar"
       class={windowClass}
       gdkmonitor={monitor}
-      exclusivity={exclusivity}
+      exclusivity={BAR_EXCLUSIVITY}
       anchor={TOP | LEFT | RIGHT}
       application={app}
     >
       <centerbox class={containerClass}>
         <box $type="start" spacing={8}>
           <Workspaces />
+        </box>
+        <box $type="center">
           <WindowTitle />
         </box>
-        <Clock $type="center" />
         <box $type="end" spacing={4}>
           <NetworkButton />
           <BluetoothButton />
           <VolumeButton />
+          <Clock />
         </box>
       </centerbox>
     </window>
