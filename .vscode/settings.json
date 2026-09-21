@@ -6,5 +6,8 @@
     "source.fixAll.ts": "explicit"
   },
   "eslint.validate": ["typescript", "typescriptreact"],
-  "eslint.format.enable": true
+  "eslint.format.enable": true,
+  "[json]": {
+    "editor.defaultFormatter": "ms-vsliveshare.vsliveshare"
+  }
 }

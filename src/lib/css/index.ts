@@ -1,23 +1,25 @@
+import { assert, isPlainObject } from "@lib/util";
 import { Accessor, createComputed } from "ags";
-import { Gtk, Gdk } from "ags/gtk4";
-import { assert, isPlainObject } from "../util";
+import { Gdk, Gtk } from "ags/gtk4";
+
 import type {
-  CSSProperty,
+  CSSPixels,
   CSSProperties,
+  CSSProperty,
+  CX,
+  CXProp,
   LengthValue,
-  PXValue,
   StyleBlock,
-  CSSInput,
+  StyleDefinition,
   Subselector,
-  ClassComposer,
-  VariantInput,
-  VariantTree,
+  VariantArgument,
+  VariantDefinition,
 } from "./types";
 
 export * from "./types";
 
 /** Formats a number as a pixel length string. */
-export const toPX = (value: number) => `${value}px` as PXValue;
+export const toPX = (value: number) => `${value}px` as CSSPixels;
 
 /**
  * Properties whose value is a `<length>` (per
@@ -87,6 +89,34 @@ export const inlineCSS = (props: CSSProperties) =>
     .map(([key, value]) => `${toKebab(key)}: ${stringifyCSSValue(key, value)};`)
     .join(" ");
 
+/**
+ * Wraps a dynamically-computed selector (e.g. built from another class's
+ * `cx()` output) and its declarations into a single-key `StyleBlock`
+ * fragment, meant to be `...`spread into a `style` object -- not written
+ * as a computed `[key]` alongside that object's own literal keys.
+ *
+ * That distinction matters: a computed key whose type isn't a specific
+ * string literal (which a runtime-built selector never is) makes
+ * TypeScript fall back to a single merged index signature for the *whole*
+ * enclosing object literal, including its unrelated literal keys (a
+ * `borderRadius: number` alongside it would then itself have to satisfy
+ * `StyleBlock`, and fail to). Spreading in an already-typed fragment
+ * avoids that inference path entirely.
+ *
+ * @example
+ * ```ts
+ * const style = {
+ *   borderRadius: 9999,
+ *   "&:hover": { opacity: 0.8 },
+ *   ...subselector(`:hover .${otherCX()}`, { color: "red" }),
+ * };
+ * ```
+ */
+export const subselector = <S extends string>(
+  selector: S,
+  block: StyleBlock,
+): StyleBlock => ({ [`& ${selector}`]: block }) as StyleBlock;
+
 const registeredClasses = new Set<string>();
 
 /**
@@ -116,11 +146,11 @@ const registeredClasses = new Set<string>();
  * cx(focused.as((f) => f?.id === ws.id && "focused")) // Accessor<string>
  * ```
  */
-export const defineStyle = <V extends Record<string, StyleBlock>>({
+export const defineStyle = <V extends VariantDefinition = never>({
   class: className,
   style = {},
-  variants = {} as V,
-}: CSSInput<V>) => {
+  variants,
+}: StyleDefinition<V>) => {
   if (registeredClasses.has(className)) {
     throw new Error(
       `defineStyle: class "${className}" is already registered. defineStyle() must ` +
@@ -129,10 +159,17 @@ export const defineStyle = <V extends Record<string, StyleBlock>>({
   }
   registeredClasses.add(className);
 
+  const selector = (...variant: (keyof V)[]) =>
+    !variant.length
+      ? `.${className}`
+      : `.${className}.${variant.map((v) => `${className}--${v as string}`).join(".")}`;
+
   const rules = [buildRules(`.${className}`, style)];
 
-  for (const [name, block] of Object.entries(variants)) {
-    rules.push(buildRules(`.${className}--${name}`, block));
+  if (variants) {
+    Object.entries(variants).forEach(([name, block]) =>
+      rules.push(buildRules(selector(name), block)),
+    );
   }
 
   const provider = new Gtk.CssProvider();
@@ -143,7 +180,7 @@ export const defineStyle = <V extends Record<string, StyleBlock>>({
     Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
   );
 
-  const compose = (variants: Array<VariantInput<V>>) =>
+  const compose = (variants: Array<keyof V>) =>
     [
       className,
       ...variants
@@ -154,7 +191,7 @@ export const defineStyle = <V extends Record<string, StyleBlock>>({
   // Recursively checks the whole argument tree -- not just the top-level
   // arguments -- since an array can itself hold an `Accessor` (or another
   // array holding one), any of which makes the composed result reactive.
-  const isReactive = (value: VariantTree<V>): boolean =>
+  const isReactive = (value: VariantArgument<keyof V>): boolean =>
     value instanceof Accessor ||
     (Array.isArray(value) && value.some(isReactive));
 
@@ -163,7 +200,7 @@ export const defineStyle = <V extends Record<string, StyleBlock>>({
   // filter). Unwrapping happens by calling the `Accessor`, so this must
   // only ever run inside `createComputed` when the tree is reactive, for
   // dependency tracking to pick up the read.
-  const flatten = (value: VariantTree<V>): Array<VariantInput<V>> => {
+  const flatten = (value: VariantArgument<keyof V>): Array<keyof V> => {
     if (value instanceof Accessor) return flatten(value());
     if (Array.isArray(value)) return value.flatMap(flatten);
 
@@ -171,18 +208,15 @@ export const defineStyle = <V extends Record<string, StyleBlock>>({
     // alias like `VariantTree<V>` from an `Array.isArray` guard -- the
     // two checks above are exhaustive for everything else `VariantTree`
     // allows, so this is a plain `VariantInput` by elimination.
-    return [value as VariantInput<V>];
+    return [value] as Array<keyof V>;
   };
 
-  const cx = (...variants: Array<VariantTree<V>>) => {
-    if (!isReactive(variants)) {
-      return compose(flatten(variants));
-    }
+  const cx = (...variants: CXProp<string>) =>
+    isReactive(variants)
+      ? createComputed(() => compose(flatten(variants)))
+      : compose(flatten(variants));
 
-    return createComputed(() => compose(flatten(variants)));
-  };
-
-  return cx as ClassComposer<V>;
+  return Object.assign(cx, { selector }) as CX<keyof V>;
 };
 
 const isSubselector = (key: string): key is Subselector => key.startsWith("&");
@@ -204,10 +238,7 @@ const splitStyleBlock = (block: StyleBlock) => {
         `defineStyle: "${key}" holds an object, not a CSS value. Only "&"-` +
           `prefixed keys may (e.g. "&:hover") -- did you forget the "&"?`,
       );
-      // A per-key write into a heterogeneous Partial<{...}> can't be typed
-      // soundly with a dynamic key -- TS only accepts `undefined` there.
-      (declarations as Record<string, LengthValue | undefined>)[key] = value as
-        LengthValue | undefined;
+      declarations[key as CSSProperty] = value as never;
     }
   }
 

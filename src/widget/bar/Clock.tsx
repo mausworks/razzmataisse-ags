@@ -1,8 +1,9 @@
+import { defineStyle } from "@lib/css";
 import { Gtk } from "ags/gtk4";
 import { createPoll } from "ags/time";
-import { MenuPill } from "./Pill";
-import { defineStyle } from "../lib/css";
 import { For } from "gnim";
+
+import { MenuPill } from "./Pill";
 
 const labelClass = defineStyle({
   class: "ClockLabel",
@@ -24,7 +25,7 @@ export default function Clock({
   return (
     <MenuPill variant="text">
       <box spacing={8}>
-        <For each={fullDate}>
+        <For each={fullDate} id={(part) => part}>
           {(part) => <label label={part} class={labelClass} />}
         </For>
       </box>

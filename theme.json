@@ -1,0 +1,20 @@
+{
+  "bar": {
+    "transition": {
+      "in": "300ms ease-out",
+      "out": "600ms ease-in-out"
+    },
+    "palette": {
+      "background": "#00000022",
+      "activeBackground": "#00000099",
+      "text": "#FFFFFF",
+      "accent": "#1088EA",
+      "accentText": "#FFFFFF"
+    },
+    "workspaceIndicator": {
+      "transition": "300ms ease-in",
+      "orbSize": 20,
+      "orbSpacing": 8
+    }
+  }
+}

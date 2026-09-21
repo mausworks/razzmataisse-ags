@@ -32,7 +32,7 @@ start() {
   # AGS_DEV: see widget/Bar.tsx -- makes the bar non-exclusive in dev mode
   # so restarts don't reserve/release screen space and shove other windows
   # around every time.
-  AGS_DEV=1 ags run app.ts --gtk 4 &
+  AGS_DEV=1 ags run src/app.ts --gtk 4 &
   pid=$!
 }
 
@@ -62,7 +62,7 @@ checksum() {
     -path ./node_modules -prune -o \
     -path ./.git -prune -o \
     -path ./@girs -prune -o \
-    \( -name "*.ts" -o -name "*.tsx" \) -print0 |
+    \( -name "*.ts" -o -name "*.json" -o -name "*.tsx" \) -print0 |
     sort -z |
     xargs -0 stat -c '%Y %n' 2>/dev/null |
     md5sum

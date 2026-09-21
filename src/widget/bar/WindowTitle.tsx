@@ -1,7 +1,7 @@
-import Pango from "gi://Pango";
+import { defineStyle } from "@lib/css";
 import { createBinding } from "ags";
 import AstalHyprland from "gi://AstalHyprland?version=0.1";
-import { defineStyle } from "../lib/css";
+import Pango from "gi://Pango";
 
 const Hyprland = AstalHyprland.get_default()!;
 

@@ -1,7 +1,8 @@
-import { Gtk } from "ags/gtk4";
 import { createBinding, createComputed, For } from "ags";
+import { Gtk } from "ags/gtk4";
 import { execAsync } from "ags/process";
 import AstalNetwork from "gi://AstalNetwork?version=0.1";
+
 import Pill, { MenuPill } from "./Pill";
 
 const Network = AstalNetwork.get_default();
@@ -102,7 +103,7 @@ export default function NetworkButton() {
           </box>
 
           <box orientation={Gtk.Orientation.VERTICAL} spacing={2}>
-            <For each={accessPoints}>
+            <For each={accessPoints} id={(ap) => ap.bssid}>
               {(ap) => (
                 <Pill onClicked={() => connect(ap.ssid!)}>
                   <box spacing={6}>

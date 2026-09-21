@@ -1,6 +1,7 @@
-import { Gtk } from "ags/gtk4";
 import { createBinding, createComputed, For } from "ags";
+import { Gtk } from "ags/gtk4";
 import AstalBluetooth from "gi://AstalBluetooth?version=0.1";
+
 import Pill, { MenuPill } from "./Pill";
 
 const Bluetooth = AstalBluetooth.get_default()!;
@@ -66,7 +67,7 @@ export default function BluetoothButton() {
           </box>
 
           <box orientation={Gtk.Orientation.VERTICAL} spacing={2}>
-            <For each={knownDevices}>
+            <For each={knownDevices} id={(device) => device.address}>
               {(device) => (
                 <Pill onClicked={() => toggle(device)}>
                   <box spacing={6}>

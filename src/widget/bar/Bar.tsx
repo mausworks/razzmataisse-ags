@@ -1,36 +1,15 @@
-import app from "ags/gtk4/app";
+import { defineStyle } from "@lib/css";
+import theme from "@theme";
 import { Astal, Gdk } from "ags/gtk4";
+import app from "ags/gtk4/app";
 import GLib from "gi://GLib";
-import { defineStyle } from "../lib/css";
-import Workspaces from "./Workspaces";
-import WindowTitle from "./WindowTitle";
+
+import BluetoothButton from "./BluetoothButton";
 import Clock from "./Clock";
 import NetworkButton from "./NetworkButton";
-import BluetoothButton from "./BluetoothButton";
 import VolumeButton from "./VolumeButton";
-import { alpha, shade } from "../lib/css/color";
-
-const windowClass = defineStyle({
-  class: "Bar",
-  style: {
-    background: "transparent",
-    color: "@theme_fg_color",
-    fontWeight: "bold",
-  },
-})();
-
-const containerClass = defineStyle({
-  class: "BarContainer",
-  style: {
-    padding: "4px 12px",
-    background: alpha(shade("@theme_bg_color", -0.8), 0.25),
-    transition: "background 300ms ease-in",
-    "&:hover": {
-      background: alpha(shade("@theme_bg_color", -0.8), 0.5),
-      transition: "background 600ms ease-out",
-    },
-  },
-})();
+import WindowTitle from "./WindowTitle";
+import WorkspaceControls from "./WorkspaceControls";
 
 const { TOP, LEFT, RIGHT } = Astal.WindowAnchor;
 
@@ -60,7 +39,7 @@ export default function Bar({ monitor }: BarProps) {
     >
       <centerbox class={containerClass}>
         <box $type="start" spacing={8}>
-          <Workspaces />
+          <WorkspaceControls />
         </box>
         <box $type="center">
           <WindowTitle />
@@ -75,3 +54,26 @@ export default function Bar({ monitor }: BarProps) {
     </window>
   );
 }
+
+const { palette, transition } = theme.bar;
+
+const windowClass = defineStyle({
+  class: "BarWindow",
+  style: {
+    background: "transparent",
+  },
+})();
+
+const containerClass = defineStyle({
+  class: "BarContainer",
+  style: {
+    padding: "4px 12px",
+    background: palette.background,
+    transition: `background ${transition.in}`,
+    color: palette.text,
+    "&:hover": {
+      background: palette.activeBackground,
+      transition: `background ${transition.out}`,
+    },
+  },
+})();

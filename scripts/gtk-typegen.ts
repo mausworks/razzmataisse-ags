@@ -1,5 +1,5 @@
+import { Gdk, Gtk } from "ags/gtk4";
 import app from "ags/gtk4/app";
-import { Gtk, Gdk } from "ags/gtk4";
 import GLib from "gi://GLib";
 
 /**

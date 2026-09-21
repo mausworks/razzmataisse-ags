@@ -1,6 +1,6 @@
+import { type CXProp, defineStyle } from "@lib/css";
+import { alpha } from "@lib/css/color";
 import type { Node } from "ags";
-import { defineStyle, type VariantProp } from "../lib/css";
-import { alpha } from "../lib/css/color";
 
 const cx = defineStyle({
   class: "Pill",
@@ -52,7 +52,7 @@ const cx = defineStyle({
 });
 
 type PillStyleProps = {
-  variant?: VariantProp<typeof cx>;
+  variant?: CXProp<typeof cx>;
   tooltipText?: string;
   children?: Node | Node[];
 };

@@ -1,6 +1,7 @@
-import { Astal } from "ags/gtk4";
 import { createBinding } from "ags";
+import { Astal } from "ags/gtk4";
 import AstalWp from "gi://AstalWp?version=0.1";
+
 import Pill, { MenuPill } from "./Pill";
 
 const createVolumeModel = () => {
