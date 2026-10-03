@@ -1,7 +1,7 @@
 import { alpha, defineStyle } from "@lib/css";
 import { createSearchModel, runResult, type SearchResult } from "@state/search";
 import theme from "@theme";
-import { For } from "ags";
+import { Accessor, createComputed, createEffect, createState, For } from "ags";
 import { Astal, Gdk, Gtk } from "ags/gtk4";
 import app from "ags/gtk4/app";
 
@@ -10,6 +10,9 @@ const { palette } = theme.bar;
 /** Matches `Bar.tsx`'s own bar height -- keeps the docked position flush. */
 const BAR_HEIGHT = 34;
 const DOCK_GAP = 12;
+// Matches the bar's own `containerClass` padding, so the docked panel lines
+// up under the search button instead of the window's left edge.
+const DOCK_MARGIN_LEFT = 12;
 const PANEL_WIDTH = 480;
 
 export type SearchWindowProps = {
@@ -21,19 +24,51 @@ export type SearchWindowProps = {
  * only makes sense for one uniquely-named window), toggled by `SearchButton`
  * and the `SUPER + Space` keybind (`ags toggle search`, see keybinds.lua).
  *
- * Docked below the bar (anchored `TOP`, which also centers it horizontally
- * since no `LEFT`/`RIGHT` anchor is set) while the query is empty; once
- * typing starts, switches to no anchor at all, which centers it on the
- * whole screen -- the same horizontal centering throughout, just losing the
- * `TOP` anchor so it jumps to the middle. Hyprland's own `layers` animation
- * (see animations.lua) is what makes that transition a slide instead of a
- * jump; not something verifiable headlessly -- check it looks right live.
+ * Docked at the far left below the bar (anchored `TOP | LEFT`) while the
+ * query is empty; once typing starts, switches to no anchor at all, which
+ * centers it on the whole screen. Hyprland's own `layers` animation (see
+ * animations.lua) is what makes that transition a slide instead of a jump;
+ * not something verifiable headlessly -- check it looks right live.
  */
 export default function SearchWindow({ monitor }: SearchWindowProps) {
   const { query, results, setText, reset } = createSearchModel();
   const isActive = query.as((text) => text.length > 0);
 
+  const [selectedIndex, setSelectedIndex] = createState(0);
+  // A new set of results (new query, or a fresh rescan) should always start
+  // back at the top, not wherever the previous list happened to leave it.
+  createEffect(() => {
+    results();
+    setSelectedIndex(0);
+  });
+
+  const moveSelection = (delta: number) => {
+    const count = results.peek().length;
+    if (count === 0) return;
+    setSelectedIndex((current) =>
+      Math.max(0, Math.min(count - 1, current + delta)),
+    );
+  };
+
   let entry: Gtk.Entry | undefined;
+  let win: Gtk.Window | undefined;
+
+  // GTK4 (layer-shell surfaces included) sizes a window to its content's
+  // natural size automatically -- but only grows; once allocated at some
+  // size it doesn't shrink back down on its own when that content gets
+  // smaller, leaving dead space below a short result list. Resetting the
+  // default size back to "natural" on every result-count change forces a
+  // fresh measurement instead of treating the largest-ever size as a floor.
+  createEffect(() => {
+    results();
+    win?.set_default_size(-1, -1);
+  });
+
+  const runSelected = () => {
+    const selected = results.peek()[selectedIndex.peek()];
+    if (selected) runResult(selected);
+    app.get_window("search")!.visible = false;
+  };
 
   return (
     <window
@@ -45,9 +80,12 @@ export default function SearchWindow({ monitor }: SearchWindowProps) {
       layer={Astal.Layer.OVERLAY}
       keymode={Astal.Keymode.ON_DEMAND}
       anchor={isActive.as((active) =>
-        active ? Astal.WindowAnchor.NONE : Astal.WindowAnchor.TOP,
+        active
+          ? Astal.WindowAnchor.NONE
+          : Astal.WindowAnchor.TOP | Astal.WindowAnchor.LEFT,
       )}
       marginTop={BAR_HEIGHT + DOCK_GAP}
+      marginLeft={DOCK_MARGIN_LEFT}
       application={app}
       onNotifyVisible={(self) => {
         if (self.visible) {
@@ -56,11 +94,22 @@ export default function SearchWindow({ monitor }: SearchWindowProps) {
         }
       }}
       $={(self) => {
+        win = self;
         const keys = new Gtk.EventControllerKey();
         keys.connect("key-pressed", (_self, keyval) => {
-          if (keyval !== Gdk.KEY_Escape) return false;
-          self.visible = false;
-          return true;
+          switch (keyval) {
+            case Gdk.KEY_Escape:
+              self.visible = false;
+              return true;
+            case Gdk.KEY_Up:
+              moveSelection(-1);
+              return true;
+            case Gdk.KEY_Down:
+              moveSelection(1);
+              return true;
+            default:
+              return false;
+          }
         });
         self.add_controller(keys);
       }}
@@ -73,22 +122,20 @@ export default function SearchWindow({ monitor }: SearchWindowProps) {
       >
         <entry
           class={entryClass}
+          primaryIconName="system-search-symbolic"
           placeholderText="Search apps and files, or $cmd / #sudo cmd…"
           text={query}
           $={(self: Gtk.Entry) => (entry = self)}
           onNotifyText={(self) => setText(self.text)}
-          onActivate={() => {
-            const first = results.peek()[0];
-            if (first) runResult(first);
-            app.get_window("search")!.visible = false;
-          }}
+          onActivate={runSelected}
         />
 
         <box orientation={Gtk.Orientation.VERTICAL} spacing={2}>
           <For each={results} id={(result) => result.id}>
-            {(result) => (
+            {(result, index) => (
               <ResultRow
                 result={result}
+                selected={createComputed(() => index() === selectedIndex())}
                 onRun={() => {
                   runResult(result);
                   app.get_window("search")!.visible = false;
@@ -104,14 +151,18 @@ export default function SearchWindow({ monitor }: SearchWindowProps) {
 
 type ResultRowProps = {
   result: SearchResult;
+  selected: Accessor<boolean>;
   onRun: () => void;
 };
 
-function ResultRow({ result, onRun }: ResultRowProps) {
+function ResultRow({ result, selected, onRun }: ResultRowProps) {
   const subtitle = resultSubtitle(result);
 
   return (
-    <button class={rowClass} onClicked={onRun}>
+    <button
+      class={rowClass(selected.as((isSelected) => isSelected && "selected"))}
+      onClicked={onRun}
+    >
       <box spacing={8}>
         <image iconName={resultIcon(result)} />
         <box orientation={Gtk.Orientation.VERTICAL} hexpand>
@@ -213,7 +264,13 @@ const rowClass = defineStyle({
       background: alpha(palette.accent, 0.16),
     },
   },
-})();
+  variants: {
+    // The keyboard-navigated row, independent of actual pointer hover.
+    selected: {
+      background: alpha(palette.accent, 0.16),
+    },
+  },
+});
 
 // A real (opaque) gray, not `alpha(palette.text, …)` -- see BarPopover.tsx
 // for why: an alpha-blended fade shifts with whatever's behind it.

@@ -32,6 +32,7 @@ export default function Bar({ monitor }: BarProps) {
     <window
       visible
       name="bar"
+      namespace="bar"
       class={windowClass}
       gdkmonitor={monitor}
       exclusivity={BAR_EXCLUSIVITY}

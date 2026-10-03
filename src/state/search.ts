@@ -63,14 +63,26 @@ const searchApps = (query: string): SearchResult[] =>
 const HOME = GLib.get_home_dir();
 
 // Directories that are either huge, binary, or not meaningfully "yours" --
-// searching them wastes time and buries real results.
+// searching them wastes time and buries real results under e.g. toolchain
+// caches and browser extension bundles. Bare names (no slash) match
+// anywhere in the tree, not just at $HOME's top level.
 const IGNORE_GLOBS = [
   "!.git",
   "!.cache",
-  "!node_modules",
   "!.local/share/Trash",
+  "!node_modules",
   "!.npm",
   "!.cargo",
+  "!.rustup",
+  "!.bun",
+  "!.vscode",
+  "!.models",
+  "!.ollama",
+  "!.docker",
+  "!.mozilla",
+  "!BraveSoftware",
+  "!chromium",
+  "!google-chrome",
 ];
 
 const MAX_FILE_RESULTS = 8;
