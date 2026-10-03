@@ -30,9 +30,23 @@ export type SearchWindowProps = {
  * animations.lua) is what makes that transition a slide instead of a jump;
  * not something verifiable headlessly -- check it looks right live.
  */
+type SearchMode = "search" | "dollar" | "hash";
+
+const PLACEHOLDER: Record<SearchMode, string> = {
+  search: "Search apps and files, or $cmd / #sudo cmd…",
+  dollar: "Command to run…",
+  hash: "Command to run as root…",
+};
+
 export default function SearchWindow({ monitor }: SearchWindowProps) {
   const { query, results, setText, reset } = createSearchModel();
   const isActive = query.as((text) => text.length > 0);
+  // Purely a function of the current text -- backspacing the "$"/"#" away
+  // (down to whatever's left, empty or not) falls back to "search" on its
+  // own, no separate key handling needed for that.
+  const mode = query.as((text): SearchMode =>
+    text.startsWith("$") ? "dollar" : text.startsWith("#") ? "hash" : "search",
+  );
 
   const [selectedIndex, setSelectedIndex] = createState(0);
   // A new set of results (new query, or a fresh rescan) should always start
@@ -120,15 +134,37 @@ export default function SearchWindow({ monitor }: SearchWindowProps) {
         spacing={8}
         widthRequest={PANEL_WIDTH}
       >
-        <entry
-          class={entryClass}
-          primaryIconName="system-search-symbolic"
-          placeholderText="Search apps and files, or $cmd / #sudo cmd…"
-          text={query}
-          $={(self: Gtk.Entry) => (entry = self)}
-          onNotifyText={(self) => setText(self.text)}
-          onActivate={runSelected}
-        />
+        <box class={entryWrapperClass} spacing={8}>
+          <box
+            class={iconSlotClass}
+            halign={Gtk.Align.CENTER}
+            valign={Gtk.Align.CENTER}
+          >
+            <image
+              iconName="system-search-symbolic"
+              visible={mode.as((current) => current === "search")}
+            />
+            <label
+              label="$"
+              class={glyphClass}
+              visible={mode.as((current) => current === "dollar")}
+            />
+            <label
+              label="#"
+              class={glyphClass}
+              visible={mode.as((current) => current === "hash")}
+            />
+          </box>
+          <entry
+            class={entryFieldClass}
+            hexpand
+            placeholderText={mode.as((current) => PLACEHOLDER[current])}
+            text={query}
+            $={(self: Gtk.Entry) => (entry = self)}
+            onNotifyText={(self) => setText(self.text)}
+            onActivate={runSelected}
+          />
+        </box>
 
         <box orientation={Gtk.Orientation.VERTICAL} spacing={2}>
           <For each={results} id={(result) => result.id}>
@@ -238,14 +274,38 @@ const panelClass = defineStyle({
   },
 })();
 
-const entryClass = defineStyle({
+const entryWrapperClass = defineStyle({
   style: {
     background: alpha(palette.text, 0.08),
+    borderRadius: 9999,
+    padding: "6px 14px",
+  },
+})();
+
+// Fixed size so the row doesn't twitch horizontally when swapping between
+// the image icon and the "$"/"#" glyph -- their natural sizes differ.
+const iconSlotClass = defineStyle({
+  style: {
+    minWidth: 16,
+    minHeight: 16,
+  },
+})();
+
+const glyphClass = defineStyle({
+  style: {
+    color: palette.text,
+    fontWeight: "bold",
+    fontSize: 14,
+  },
+})();
+
+const entryFieldClass = defineStyle({
+  style: {
+    background: "transparent",
     color: palette.text,
     border: "none",
     boxShadow: "none",
-    borderRadius: 9999,
-    padding: "6px 12px",
+    padding: 0,
     fontSize: 14,
   },
 })();

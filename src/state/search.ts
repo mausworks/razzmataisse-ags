@@ -190,9 +190,18 @@ export const createSearchModel = () => {
   let searchToken = 0;
 
   const search = (text: string) => {
-    const command = parseCommand(text);
-    if (command) {
-      setResults([command]);
+    // Cancel any in-flight file search unconditionally -- every branch
+    // below can replace the result set, and a stale debounced search from
+    // a previous (now-irrelevant) query shouldn't be able to append to it
+    // after the fact, e.g. after switching into command mode.
+    if (debounceTimer) clearTimeout(debounceTimer);
+
+    // `$`/`#` command mode: no apps, no files, no recents -- just the one
+    // command result once there's actually a command typed after the
+    // prefix (none yet -> empty list, not a stale/irrelevant one).
+    if (text.startsWith("$") || text.startsWith("#")) {
+      const command = parseCommand(text);
+      setResults(command ? [command] : []);
       return;
     }
 
@@ -203,7 +212,6 @@ export const createSearchModel = () => {
 
     setResults(searchApps(text));
 
-    if (debounceTimer) clearTimeout(debounceTimer);
     const token = ++searchToken;
     debounceTimer = setTimeout(() => {
       searchFiles(text)
