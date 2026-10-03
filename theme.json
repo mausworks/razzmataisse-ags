@@ -9,12 +9,14 @@
       "activeBackground": "#00000099",
       "text": "#FFFFFF",
       "accent": "#1088EA",
-      "accentText": "#FFFFFF"
+      "accentText": "#FFFFFF",
+      "success": "#32D74B",
+      "danger": "#FF453A"
     },
     "workspaceIndicator": {
       "transition": "300ms ease-in",
-      "orbSize": 20,
-      "orbSpacing": 8
+      "size": 20,
+      "spacing": 8
     }
   }
 }

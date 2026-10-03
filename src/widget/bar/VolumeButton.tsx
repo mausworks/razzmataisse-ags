@@ -50,7 +50,7 @@ export default function VolumeButton() {
     <MenuPill variant="icon">
       <image iconName={iconName} />
       <BarPopover>
-        <box spacing={8} widthRequest={200}>
+        <box spacing={8} widthRequest={200} marginStart={8} marginEnd={8}>
           <Pill onClicked={toggleMute}>
             <image iconName={muteIconName} />
           </Pill>

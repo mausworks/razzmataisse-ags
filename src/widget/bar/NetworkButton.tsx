@@ -1,38 +1,31 @@
+import { defineStyle } from "@lib/css";
+import theme from "@theme";
 import { createBinding, createComputed, For } from "ags";
 import { Gtk } from "ags/gtk4";
 import { execAsync } from "ags/process";
+import { interval } from "ags/time";
 import AstalNetwork from "gi://AstalNetwork?version=0.1";
 
 import BarPopover from "./BarPopover";
 import Pill, { MenuPill } from "./Pill";
+import StatusBadge from "./StatusBadge";
 
 const Network = AstalNetwork.get_default();
 
 const createNetworkModel = () => {
   const wifiIcon = createBinding(Network, "wifi", "iconName");
   const wiredIcon = createBinding(Network, "wired", "iconName");
-  const ssid = createBinding(Network, "wifi", "ssid");
-  const strength = createBinding(Network, "wifi", "strength");
 
   const iconName = createComputed(
     () => wifiIcon() ?? wiredIcon() ?? "network-offline-symbolic",
   );
 
-  const statusLabel = createComputed(() => {
-    const currentSsid = ssid();
-
-    if (currentSsid) {
-      return `${currentSsid}  (${strength()}%)`;
-    } else if (wiredIcon()) {
-      return "Wired connection";
-    } else {
-      return "Not connected";
-    }
-  });
-
   const enabled = createBinding(Network, "wifi", "enabled").as(
     (wifiEnabled) => wifiEnabled ?? false,
   );
+
+  // Keeps each SSID's position stable across rescans, below.
+  const orderedSsids: string[] = [];
 
   const accessPoints = createBinding(Network, "wifi", "accessPoints").as(
     (list) => {
@@ -43,13 +36,31 @@ const createNetworkModel = () => {
         if (!existing || ap.strength > existing.strength)
           bySsid.set(ap.ssid, ap);
       }
-      return [...bySsid.values()].sort(
-        (left, right) => right.strength - left.strength,
-      );
+
+      // The automatic rescan (see `interval` below) re-triggers this on its
+      // own schedule, including while the popover is open -- re-sorting by
+      // strength every time would reshuffle the list under a user who's
+      // mid-click. Instead, newly-seen SSIDs are appended (sorted by
+      // strength among themselves), but an SSID already in `orderedSsids`
+      // keeps its position regardless of later strength changes.
+      const seen = new Set(bySsid.keys());
+      for (let i = orderedSsids.length - 1; i >= 0; i--) {
+        if (!seen.has(orderedSsids[i])) orderedSsids.splice(i, 1);
+      }
+      const newSsids = [...seen]
+        .filter((ssid) => !orderedSsids.includes(ssid))
+        .sort((a, b) => bySsid.get(b)!.strength - bySsid.get(a)!.strength);
+      orderedSsids.push(...newSsids);
+
+      return orderedSsids.map((ssid) => bySsid.get(ssid)!);
     },
   );
 
-  return { iconName, statusLabel, enabled, accessPoints };
+  const activeBssid = createBinding(Network, "wifi", "activeAccessPoint").as(
+    (ap) => ap?.bssid ?? null,
+  );
+
+  return { iconName, enabled, accessPoints, activeBssid };
 };
 
 const createWifiActions = () => {
@@ -67,19 +78,27 @@ const createWifiActions = () => {
     wifi.enabled = false;
   };
 
-  const scan = () => wifi?.scan();
-
   const connect = (ssid: string) =>
     execAsync(["nmcli", "device", "wifi", "connect", ssid]).catch((err) =>
       console.error(`failed to connect to ${ssid}:`, err),
     );
 
-  return { enable, disable, scan, connect };
+  const disconnect = (ssid: string) =>
+    execAsync(["nmcli", "connection", "down", "id", ssid]).catch((err) =>
+      console.error(`failed to disconnect from ${ssid}:`, err),
+    );
+
+  const toggle = (ap: AstalNetwork.AccessPoint, activeBssid: string | null) =>
+    ap.bssid === activeBssid ? disconnect(ap.ssid!) : connect(ap.ssid!);
+
+  interval(5000, () => wifi?.scan());
+
+  return { enable, disable, toggle };
 };
 
 export default function NetworkButton() {
-  const { iconName, statusLabel, enabled, accessPoints } = createNetworkModel();
-  const { enable, disable, scan, connect } = createWifiActions();
+  const { iconName, enabled, accessPoints, activeBssid } = createNetworkModel();
+  const { enable, disable, toggle } = createWifiActions();
 
   return (
     <MenuPill variant="icon">
@@ -89,30 +108,40 @@ export default function NetworkButton() {
           orientation={Gtk.Orientation.VERTICAL}
           spacing={8}
           widthRequest={220}
+          marginStart={8}
+          marginEnd={8}
         >
-          <label label={statusLabel} halign={Gtk.Align.START} />
-
-          <box spacing={8}>
+          <box spacing={8} marginTop={8} marginStart={4} marginEnd={4}>
             <label label="Wi-Fi" hexpand halign={Gtk.Align.START} />
-            <switch
-              active={enabled}
-              onNotifyActive={(self) => (self.active ? enable() : disable())}
+            <StatusBadge
+              on={enabled}
+              onClicked={() => (enabled.peek() ? disable() : enable())}
             />
-            <Pill onClicked={scan} tooltipText="Scan">
-              <image iconName="view-refresh-symbolic" />
-            </Pill>
           </box>
 
-          <box orientation={Gtk.Orientation.VERTICAL} spacing={2}>
+          <box
+            orientation={Gtk.Orientation.VERTICAL}
+            spacing={2}
+            marginBottom={8}
+            visible={enabled}
+          >
             <For each={accessPoints} id={(ap) => ap.bssid}>
               {(ap) => (
-                <Pill onClicked={() => connect(ap.ssid!)}>
+                <Pill onClicked={() => toggle(ap, activeBssid.peek())}>
                   <box spacing={6}>
-                    <image iconName={createBinding(ap, "iconName")} />
+                    <image
+                      iconName={createBinding(ap, "iconName")}
+                      class={activeBssid.as((bssid) =>
+                        bssid === ap.bssid ? activeApClass : "",
+                      )}
+                    />
                     <label
                       label={ap.ssid ?? ""}
                       hexpand
                       halign={Gtk.Align.START}
+                      class={activeBssid.as((bssid) =>
+                        bssid === ap.bssid ? activeApClass : "",
+                      )}
                     />
                     <label
                       label={createBinding(ap, "strength").as(
@@ -129,3 +158,10 @@ export default function NetworkButton() {
     </MenuPill>
   );
 }
+
+const activeApClass = defineStyle({
+  style: {
+    color: theme.bar.palette.accent,
+    fontWeight: "bold",
+  },
+})();
