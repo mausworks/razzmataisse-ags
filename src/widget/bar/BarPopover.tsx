@@ -1,18 +1,40 @@
 import { alpha, defineStyle } from "@lib/css";
+import { NiceWidgetProps } from "@lib/gtk";
 import theme from "@theme";
+import type { Node } from "ags";
+import { Gtk } from "ags/gtk4";
 
 const { palette } = theme.bar;
 
+type BarPopoverProps = {
+  children?: Node | Node[];
+  $?: (self: Gtk.Popover) => void;
+};
+
 /**
- * Shared look for every bar popover menu (network, bluetooth, volume,
- * clock/calendar) -- a solid-black panel matching the bar itself, rather
- * than GTK's/the system theme's default light popover chrome.
+ * A `popover`, styled as a solid-black panel matching the bar itself,
+ * instead of the system theme's default light popover chrome.
  *
  * GTK4's `Popover` CSS node tree is `popover.background` with two direct
  * children, `contents` and `arrow`; the outer node is left transparent so
  * only those two actually paint.
  */
-export const popoverClass = defineStyle({
+export default function BarPopover({ children, $ }: BarPopoverProps) {
+  return (
+    <popover class={popoverClass} $={$}>
+      {children}
+    </popover>
+  );
+}
+
+export type BarCalendarProps = NiceWidgetProps<propsof<typeof Gtk.Calendar>>;
+
+/** A `Gtk.Calendar`, matched to the same dark palette, with week numbers on. */
+export function BarCalendar(props: BarCalendarProps) {
+  return <Gtk.Calendar showWeekNumbers {...props} class={calendarClass} />;
+}
+
+const popoverClass = defineStyle({
   class: "BarPopover",
   style: {
     background: "transparent",
@@ -30,8 +52,7 @@ export const popoverClass = defineStyle({
   },
 })();
 
-/** Matches `Gtk.Calendar` to the same dark palette as the rest of the bar. */
-export const calendarClass = defineStyle({
+const calendarClass = defineStyle({
   class: "BarCalendar",
   style: {
     background: "transparent",
@@ -50,6 +71,9 @@ export const calendarClass = defineStyle({
     },
     "& grid label": {
       color: palette.text,
+    },
+    "& grid label.week-number": {
+      color: alpha(palette.text, 0.3),
     },
     "& grid label.other-month": {
       color: alpha(palette.text, 0.3),

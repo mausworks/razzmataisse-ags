@@ -3,8 +3,8 @@ import { Gtk } from "ags/gtk4";
 import { execAsync } from "ags/process";
 import AstalNetwork from "gi://AstalNetwork?version=0.1";
 
+import BarPopover from "./BarPopover";
 import Pill, { MenuPill } from "./Pill";
-import { popoverClass } from "./popover";
 
 const Network = AstalNetwork.get_default();
 
@@ -84,7 +84,7 @@ export default function NetworkButton() {
   return (
     <MenuPill variant="icon">
       <image iconName={iconName} />
-      <popover class={popoverClass}>
+      <BarPopover>
         <box
           orientation={Gtk.Orientation.VERTICAL}
           spacing={8}
@@ -125,7 +125,7 @@ export default function NetworkButton() {
             </For>
           </box>
         </box>
-      </popover>
+      </BarPopover>
     </MenuPill>
   );
 }

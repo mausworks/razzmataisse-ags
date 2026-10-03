@@ -1,10 +1,9 @@
 import { defineStyle } from "@lib/css";
-import { Gtk } from "ags/gtk4";
 import { createPoll } from "ags/time";
 import { For } from "gnim";
 
+import BarPopover, { BarCalendar } from "./BarPopover";
 import { MenuPill } from "./Pill";
-import { calendarClass, popoverClass } from "./popover";
 
 const labelClass = defineStyle({
   style: {
@@ -29,9 +28,9 @@ export default function Clock({
           {(part) => <label label={part} class={labelClass} />}
         </For>
       </box>
-      <popover class={popoverClass}>
-        <Gtk.Calendar class={calendarClass} />
-      </popover>
+      <BarPopover>
+        <BarCalendar />
+      </BarPopover>
     </MenuPill>
   );
 }

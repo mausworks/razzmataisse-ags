@@ -2,8 +2,8 @@ import { createBinding } from "ags";
 import { Astal } from "ags/gtk4";
 import AstalWp from "gi://AstalWp?version=0.1";
 
+import BarPopover from "./BarPopover";
 import Pill, { MenuPill } from "./Pill";
-import { popoverClass } from "./popover";
 
 const createVolumeModel = () => {
   const wp = AstalWp.get_default()!;
@@ -49,7 +49,7 @@ export default function VolumeButton() {
   return (
     <MenuPill variant="icon">
       <image iconName={iconName} />
-      <popover class={popoverClass}>
+      <BarPopover>
         <box spacing={8} widthRequest={200}>
           <Pill onClicked={toggleMute}>
             <image iconName={muteIconName} />
@@ -63,7 +63,7 @@ export default function VolumeButton() {
             onValueChanged={({ value }: Astal.Slider) => setVolume(value)}
           />
         </box>
-      </popover>
+      </BarPopover>
     </MenuPill>
   );
 }
