@@ -3,6 +3,7 @@ import { Astal } from "ags/gtk4";
 import AstalWp from "gi://AstalWp?version=0.1";
 
 import Pill, { MenuPill } from "./Pill";
+import { popoverClass } from "./popover";
 
 const createVolumeModel = () => {
   const wp = AstalWp.get_default()!;
@@ -48,7 +49,7 @@ export default function VolumeButton() {
   return (
     <MenuPill variant="icon">
       <image iconName={iconName} />
-      <popover>
+      <popover class={popoverClass}>
         <box spacing={8} widthRequest={200}>
           <Pill onClicked={toggleMute}>
             <image iconName={muteIconName} />

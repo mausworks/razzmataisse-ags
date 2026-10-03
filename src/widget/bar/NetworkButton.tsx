@@ -4,6 +4,7 @@ import { execAsync } from "ags/process";
 import AstalNetwork from "gi://AstalNetwork?version=0.1";
 
 import Pill, { MenuPill } from "./Pill";
+import { popoverClass } from "./popover";
 
 const Network = AstalNetwork.get_default();
 
@@ -83,7 +84,7 @@ export default function NetworkButton() {
   return (
     <MenuPill variant="icon">
       <image iconName={iconName} />
-      <popover>
+      <popover class={popoverClass}>
         <box
           orientation={Gtk.Orientation.VERTICAL}
           spacing={8}

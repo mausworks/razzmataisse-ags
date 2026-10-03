@@ -3,6 +3,7 @@ import { Gtk } from "ags/gtk4";
 import AstalBluetooth from "gi://AstalBluetooth?version=0.1";
 
 import Pill, { MenuPill } from "./Pill";
+import { popoverClass } from "./popover";
 
 const Bluetooth = AstalBluetooth.get_default()!;
 
@@ -52,7 +53,7 @@ export default function BluetoothButton() {
   return (
     <MenuPill variant="icon">
       <image iconName={iconName} />
-      <popover>
+      <popover class={popoverClass}>
         <box
           orientation={Gtk.Orientation.VERTICAL}
           spacing={8}
