@@ -41,12 +41,15 @@ const PLACEHOLDER: Record<SearchMode, string> = {
 export default function SearchWindow({ monitor }: SearchWindowProps) {
   const { query, results, setText, reset } = createSearchModel();
   const isActive = query.as((text) => text.length > 0);
-  // Purely a function of the current text -- backspacing the "$"/"#" away
-  // (down to whatever's left, empty or not) falls back to "search" on its
-  // own, no separate key handling needed for that.
-  const mode = query.as((text): SearchMode =>
-    text.startsWith("$") ? "dollar" : text.startsWith("#") ? "hash" : "search",
-  );
+
+  // The "$"/"#" prefix is never shown in the entry itself once it's
+  // switched the icon over -- that'd be showing the same thing twice. So
+  // unlike `query` (the full, logical "$cmd" text search.ts works with),
+  // `mode` can't just be derived from the entry's own text content anymore
+  // (the prefix character isn't in there after the swap) -- it's tracked
+  // explicitly, with the entry and the model's `query` kept in sync by
+  // hand in onNotifyText below.
+  const [mode, setMode] = createState<SearchMode>("search");
 
   const [selectedIndex, setSelectedIndex] = createState(0);
   // A new set of results (new query, or a fresh rescan) should always start
@@ -103,7 +106,9 @@ export default function SearchWindow({ monitor }: SearchWindowProps) {
       application={app}
       onNotifyVisible={(self) => {
         if (self.visible) {
+          setMode("search");
           reset();
+          entry?.set_text("");
           entry?.grab_focus();
         }
       }}
@@ -121,6 +126,16 @@ export default function SearchWindow({ monitor }: SearchWindowProps) {
             case Gdk.KEY_Down:
               moveSelection(1);
               return true;
+            case Gdk.KEY_BackSpace:
+              // The prefix itself isn't in the entry's text, so there's
+              // nothing left for a normal backspace to delete once the
+              // field reads empty -- that keypress is the signal to drop
+              // back to search mode instead.
+              if (mode.peek() !== "search" && !entry?.text) {
+                setMode("search");
+                setText("");
+              }
+              return false;
             default:
               return false;
           }
@@ -159,9 +174,34 @@ export default function SearchWindow({ monitor }: SearchWindowProps) {
             class={entryFieldClass}
             hexpand
             placeholderText={mode.as((current) => PLACEHOLDER[current])}
-            text={query}
             $={(self: Gtk.Entry) => (entry = self)}
-            onNotifyText={(self) => setText(self.text)}
+            onNotifyText={(self) => {
+              const typed = self.text;
+              const currentMode = mode.peek();
+
+              if (
+                currentMode === "search" &&
+                (typed.startsWith("$") || typed.startsWith("#"))
+              ) {
+                const prefix = typed[0] as "$" | "#";
+                const rest = typed.slice(1);
+                setMode(prefix === "$" ? "dollar" : "hash");
+                // Triggers this same handler again with `rest`, which the
+                // mode switch above means falls through to the branch
+                // below instead -- setText() still runs once either way.
+                self.set_text(rest);
+                setText(prefix + rest);
+                return;
+              }
+
+              const prefix =
+                currentMode === "dollar"
+                  ? "$"
+                  : currentMode === "hash"
+                    ? "#"
+                    : "";
+              setText(prefix + typed);
+            }}
             onActivate={runSelected}
           />
         </box>
