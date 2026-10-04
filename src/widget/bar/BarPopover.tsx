@@ -100,7 +100,8 @@ const calendarClass = defineStyle({
       color: palette.accent,
     },
     "& grid label": {
-      color: palette.text,
+      color: alpha(palette.text, 0.85),
+      fontWeight: "bold",
       fontFeatureSettings: TABULAR_NUMBERS,
     },
     // Below ~9px, GTK clips the tops of these glyphs outright (confirmed
@@ -123,7 +124,7 @@ const calendarClass = defineStyle({
       color: OTHER_MONTH_GRAY,
     },
     "& grid label:selected": {
-      background: palette.accent,
+      background: alpha(palette.accent, 0.85),
       color: palette.accentText,
       borderRadius: 9999,
     },
