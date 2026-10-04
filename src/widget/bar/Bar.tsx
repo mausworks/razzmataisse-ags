@@ -1,3 +1,4 @@
+import config from "@config";
 import { defineStyle } from "@lib/css";
 import { withLayerBlur } from "@lib/hyprland";
 import theme from "@theme";
@@ -43,17 +44,17 @@ export default function Bar({ monitor }: BarProps) {
     >
       <centerbox class={containerClass}>
         <box $type="start" spacing={8}>
-          <LauncherButton />
-          <WorkspaceControls />
+          <LauncherButton {...config.bar.launcher} />
+          <WorkspaceControls {...config.bar.workspaces} />
         </box>
         <box $type="center">
-          <WindowTitle />
+          <WindowTitle {...config.bar.windowTitle} />
         </box>
         <box $type="end" spacing={4}>
-          <NetworkButton />
-          <BluetoothButton />
-          <VolumeButton />
-          <Clock />
+          <NetworkButton {...config.bar.wifi} />
+          <BluetoothButton {...config.bar.bluetooth} />
+          <VolumeButton {...config.bar.audio} />
+          <Clock {...config.bar.clock} calendar={config.bar.calendar} />
         </box>
       </centerbox>
     </window>

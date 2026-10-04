@@ -1,5 +1,23 @@
 {
   "$schema": "./schemas/config.schema.json",
+  "bar": {
+    "launcher": { "visible": true },
+    "workspaces": { "visible": true, "max": 10, "backfill": true },
+    "windowTitle": { "visible": true, "default": "Desktop" },
+    "wifi": { "visible": true },
+    "bluetooth": { "visible": true },
+    "audio": { "visible": true },
+    "clock": {
+      "visible": true,
+      "dateFormat": "%a %d %b",
+      "timeFormat": "%H:%M",
+      "interval": "1s"
+    },
+    "calendar": {
+      "visible": true,
+      "showWeekNumbers": true
+    }
+  },
   "search": {
     "grepCommand": "rg",
     "roots": ["~"],

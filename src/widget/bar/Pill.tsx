@@ -1,10 +1,11 @@
 import { alpha, type CXProp, defineStyle } from "@lib/css";
-import type { Node } from "ags";
+import type { Accessor, Node } from "ags";
 import { Gtk } from "ags/gtk4";
 
 type PillStyleProps = {
   variant?: CXProp<typeof cx>;
   tooltipText?: string;
+  visible?: boolean | Accessor<boolean>;
   children?: Node | Node[];
 };
 

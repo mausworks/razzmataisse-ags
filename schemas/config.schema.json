@@ -5,11 +5,129 @@
   "description": "Non-visual settings for the shell, bridged into src/ as `@config`.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["search"],
+  "required": ["search", "bar"],
   "properties": {
     "$schema": {
       "type": "string",
       "description": "Points editors at this schema file for autocomplete/validation."
+    },
+    "bar": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Each section here is spread as default props onto its matching bar component, e.g. <Clock {...config.bar.clock} />.",
+      "required": [
+        "launcher",
+        "workspaces",
+        "windowTitle",
+        "wifi",
+        "bluetooth",
+        "audio",
+        "clock",
+        "calendar"
+      ],
+      "properties": {
+        "launcher": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["visible"],
+          "properties": {
+            "visible": { "type": "boolean" }
+          }
+        },
+        "workspaces": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["visible", "max", "backfill"],
+          "properties": {
+            "visible": { "type": "boolean" },
+            "max": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "How many workspace slots the indicator reserves space for."
+            },
+            "backfill": {
+              "type": "boolean",
+              "description": "Whether a workspace slot between 1 and the highest-numbered open/focused one, but not itself open, shows a dim placeholder instead of nothing."
+            }
+          }
+        },
+        "windowTitle": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["visible", "default"],
+          "properties": {
+            "visible": { "type": "boolean" },
+            "default": {
+              "type": "string",
+              "description": "Shown in place of a window title when no window is focused."
+            }
+          }
+        },
+        "wifi": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["visible"],
+          "properties": {
+            "visible": {
+              "type": "boolean",
+              "description": "Also hidden automatically when there's no wifi hardware at all, regardless of this setting."
+            }
+          }
+        },
+        "bluetooth": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["visible"],
+          "properties": {
+            "visible": {
+              "type": "boolean",
+              "description": "Also hidden automatically when there's no Bluetooth adapter at all, regardless of this setting."
+            }
+          }
+        },
+        "audio": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["visible"],
+          "properties": {
+            "visible": {
+              "type": "boolean",
+              "description": "Also hidden automatically when there's no default audio sink at all, regardless of this setting."
+            }
+          }
+        },
+        "clock": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["visible", "dateFormat", "timeFormat", "interval"],
+          "properties": {
+            "visible": { "type": "boolean" },
+            "dateFormat": {
+              "type": "string",
+              "description": "`date`(1) format string for the date portion."
+            },
+            "timeFormat": {
+              "type": "string",
+              "description": "`date`(1) format string for the time portion."
+            },
+            "interval": {
+              "type": "string",
+              "pattern": "^\\d+m?s$",
+              "description": "How often the clock refreshes, e.g. \"1s\"."
+            }
+          }
+        },
+        "calendar": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["visible", "showWeekNumbers"],
+          "description": "The calendar popover opened from the clock.",
+          "properties": {
+            "visible": { "type": "boolean" },
+            "showWeekNumbers": { "type": "boolean" }
+          }
+        }
+      }
     },
     "search": {
       "type": "object",

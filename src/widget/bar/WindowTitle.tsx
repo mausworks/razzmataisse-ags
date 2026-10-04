@@ -12,13 +12,22 @@ const titleClass = defineStyle({
   },
 })();
 
-export default function WindowTitle() {
+export type WindowTitleProps = {
+  visible?: boolean;
+  default?: string;
+};
+
+export default function WindowTitle({
+  visible = true,
+  default: defaultTitle = "Desktop",
+}: WindowTitleProps) {
   const title = createBinding(Hyprland, "focusedClient", "title").as(
-    (clientTitle) => clientTitle || "Desktop",
+    (clientTitle) => clientTitle || defaultTitle,
   );
 
   return (
     <label
+      visible={visible}
       class={titleClass}
       label={title}
       ellipsize={Pango.EllipsizeMode.END}

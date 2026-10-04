@@ -13,6 +13,8 @@ import StatusBadge from "./StatusBadge";
 const Network = AstalNetwork.get_default();
 
 const createNetworkModel = () => {
+  const hasWifi = createBinding(Network, "wifi").as((wifi) => wifi != null);
+
   const wifiIcon = createBinding(Network, "wifi", "iconName");
   const wiredIcon = createBinding(Network, "wired", "iconName");
 
@@ -60,7 +62,7 @@ const createNetworkModel = () => {
     (ap) => ap?.bssid ?? null,
   );
 
-  return { iconName, enabled, accessPoints, activeBssid };
+  return { iconName, enabled, accessPoints, activeBssid, hasWifi };
 };
 
 const createWifiActions = () => {
@@ -96,12 +98,17 @@ const createWifiActions = () => {
   return { enable, disable, toggle };
 };
 
-export default function NetworkButton() {
-  const { iconName, enabled, accessPoints, activeBssid } = createNetworkModel();
+export type NetworkButtonProps = {
+  visible?: boolean;
+};
+
+export default function NetworkButton({ visible = true }: NetworkButtonProps) {
+  const { iconName, enabled, accessPoints, activeBssid, hasWifi } =
+    createNetworkModel();
   const { enable, disable, toggle } = createWifiActions();
 
   return (
-    <MenuPill variant="icon">
+    <MenuPill variant="icon" visible={hasWifi.as((has) => visible && has)}>
       <image iconName={iconName} />
       <BarPopover>
         <box

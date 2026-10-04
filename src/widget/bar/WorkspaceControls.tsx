@@ -1,3 +1,4 @@
+import config from "@config";
 import { alpha, defineStyle, transitions } from "@lib/css";
 import {
   createWorkspacesActions,
@@ -13,17 +14,39 @@ import Square from "@ui/Square";
 import { For } from "ags";
 import { Gtk } from "ags/gtk4";
 
-const MAX_WORKSPACES = 10;
 const ORB_SIZE = theme.bar.workspaceIndicator.size;
 const ORB_SPACING = theme.bar.workspaceIndicator.spacing;
+
+// `Track`'s segment count bakes into a generated CSS class at module-eval
+// time (see `defineProgressMeter`/`defineStyle` -- "exactly once, at
+// module scope"), so it can't be sized from a prop the way the rest of
+// this component's config-driven defaults are. Read directly from config
+// here instead, same as `theme.bar.workspaceIndicator` above -- it's the
+// same value `max` below defaults to, just needed earlier than render.
+const MAX_WORKSPACES = config.bar.workspaces.max;
 const CONTAINER_WIDTH = ORB_SPACING + (ORB_SIZE + ORB_SPACING) * MAX_WORKSPACES;
 
-export default function Workspaces() {
+export type WorkspaceControlsProps = {
+  visible?: boolean;
+  max?: number;
+  backfill?: boolean;
+};
+
+export default function Workspaces({
+  visible = true,
+  max = MAX_WORKSPACES,
+  backfill = true,
+}: WorkspaceControlsProps) {
   const { workspaces, maxId } = createWorkspacesModel();
   const { focus } = createWorkspacesActions();
 
+  // The model always tracks the full 1-10 range -- `max` only limits how
+  // many of those slots this component actually renders.
+  const visibleWorkspaces = workspaces.as((list) => list.slice(0, max));
+
   return (
     <Overlay
+      visible={visible}
       widthRequest={CONTAINER_WIDTH}
       valign={Gtk.Align.CENTER}
       halign={Gtk.Align.START}
@@ -36,18 +59,21 @@ export default function Workspaces() {
           valign={Gtk.Align.CENTER}
           halign={Gtk.Align.START}
         >
-          <For each={workspaces} id={(ws) => ws.id}>
-            {(ws) => <WorkspaceButton {...ws} onClicked={focus} />}
+          <For each={visibleWorkspaces} id={(ws) => ws.id}>
+            {(ws) => (
+              <WorkspaceButton {...ws} backfill={backfill} onClicked={focus} />
+            )}
           </For>
         </box>
       }
     >
-      <Track progress={maxId.as((max) => max - 1)} />
+      <Track progress={maxId.as((id) => Math.min(id, max) - 1)} />
     </Overlay>
   );
 }
 
 type WorkspaceButtonProps = WorkspaceModel & {
+  backfill: boolean;
   onClicked?: (id: WorkspaceId) => void;
 };
 
@@ -55,9 +81,12 @@ const WorkspaceButton: FC<WorkspaceButtonProps> = ({
   id,
   onClicked,
   flags,
+  backfill,
 }) => {
   const open = flags.has(WORKSPACE_FLAGS.OPEN).as((on) => on && "open");
-  const filler = flags.has(WORKSPACE_FLAGS.FILLER).as((on) => on && "filler");
+  const filler = flags
+    .has(WORKSPACE_FLAGS.FILLER)
+    .as((on) => backfill && on && "filler");
   const focused = flags
     .has(WORKSPACE_FLAGS.FOCUSED)
     .as((on) => on && "focused");

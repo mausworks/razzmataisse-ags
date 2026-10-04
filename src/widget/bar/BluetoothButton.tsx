@@ -12,6 +12,10 @@ import StatusBadge from "./StatusBadge";
 const Bluetooth = AstalBluetooth.get_default()!;
 
 const createBluetoothModel = () => {
+  const hasAdapter = createBinding(Bluetooth, "adapter").as(
+    (adapter) => adapter != null,
+  );
+
   const powered = createBinding(Bluetooth, "isPowered");
   const isConnected = createBinding(Bluetooth, "isConnected");
   const devices = createBinding(Bluetooth, "devices");
@@ -30,7 +34,7 @@ const createBluetoothModel = () => {
     [...list].filter((device) => device.paired || device.connected),
   );
 
-  return { iconName, powered, knownDevices };
+  return { iconName, powered, knownDevices, hasAdapter };
 };
 
 /**
@@ -89,12 +93,19 @@ const createBluetoothActions = () => {
   return { enable, disable, toggle };
 };
 
-export default function BluetoothButton() {
-  const { iconName, powered, knownDevices } = createBluetoothModel();
+export type BluetoothButtonProps = {
+  visible?: boolean;
+};
+
+export default function BluetoothButton({
+  visible = true,
+}: BluetoothButtonProps) {
+  const { iconName, powered, knownDevices, hasAdapter } =
+    createBluetoothModel();
   const { enable, disable, toggle } = createBluetoothActions();
 
   return (
-    <MenuPill variant="icon">
+    <MenuPill variant="icon" visible={hasAdapter.as((has) => visible && has)}>
       <image iconName={iconName} />
       <BarPopover>
         <box

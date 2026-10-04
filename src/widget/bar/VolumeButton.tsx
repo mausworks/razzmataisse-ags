@@ -8,6 +8,10 @@ import Pill, { MenuPill } from "./Pill";
 const createVolumeModel = () => {
   const wp = AstalWp.get_default()!;
 
+  const hasSpeaker = createBinding(wp, "defaultSpeaker").as(
+    (speaker) => speaker != null,
+  );
+
   const iconName = createBinding(wp, "defaultSpeaker", "volumeIcon").as(
     (icon) => icon ?? "audio-volume-muted-symbolic",
   );
@@ -21,7 +25,7 @@ const createVolumeModel = () => {
       muted ? "audio-volume-muted-symbolic" : "audio-volume-high-symbolic",
   );
 
-  return { iconName, volume, muteIconName };
+  return { iconName, volume, muteIconName, hasSpeaker };
 };
 
 const createVolumeActions = () => {
@@ -42,12 +46,16 @@ const createVolumeActions = () => {
   return { toggleMute, setVolume };
 };
 
-export default function VolumeButton() {
-  const { iconName, volume, muteIconName } = createVolumeModel();
+export type VolumeButtonProps = {
+  visible?: boolean;
+};
+
+export default function VolumeButton({ visible = true }: VolumeButtonProps) {
+  const { iconName, volume, muteIconName, hasSpeaker } = createVolumeModel();
   const { toggleMute, setVolume } = createVolumeActions();
 
   return (
-    <MenuPill variant="icon">
+    <MenuPill variant="icon" visible={hasSpeaker.as((has) => visible && has)}>
       <image iconName={iconName} />
       <BarPopover>
         <box spacing={8} widthRequest={200} marginStart={8} marginEnd={8}>
