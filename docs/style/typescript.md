@@ -35,6 +35,28 @@ const makeUser = (name: string) => ({ name, id: crypto.randomUUID() }) as User;
 const makeUser = (name: string): User => ({ name, id: crypto.randomUUID() });
 ```
 
+Destructure a component's props in the function signature, not off a
+`props` object in the body — the signature itself should show what the
+component actually reads. When every prop is just forwarded wholesale with
+nothing picked out individually, destructure as `{ ...props }` anyway, for
+the same reason and for consistency with the general case.
+
+```tsx
+// Prefer
+function Row({ label, onClick }: RowProps) {
+  return <button onClicked={onClick}>{label}</button>;
+}
+
+function Calendar({ ...props }: CalendarProps) {
+  return <Gtk.Calendar {...props} class={calendarClass} />;
+}
+
+// Not
+function Row(props: RowProps) {
+  return <button onClicked={props.onClick}>{props.label}</button>;
+}
+```
+
 ## Control flow
 
 Prefer a `const` record (lookup object) over `switch` or long
@@ -151,3 +173,24 @@ Examples go in an `@example` tag, followed by a fenced code block.
  * ```
  */
 ````
+
+Write short descriptive docs meant for human consumption.
+
+Avoid using semi-colons, em-dashes and similar punction.
+
+```ts
+/**
+ * An `hsl()`/`hsla()` color -- hue in degrees, saturation/lightness as
+ * percentages, in either the legacy comma-separated or the modern
+ * space-separated (optionally `/ alpha`) syntax.
+ */
+```
+
+Good:
+```ts
+/**
+ * An HSL/HSLA color. Hue in degrees, saturation/lightness as percentages. 
+ * 
+ * Can be either comma-separated or space-separated (with optional `/ alpha`).
+ */
+```
