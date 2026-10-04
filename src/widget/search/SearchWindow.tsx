@@ -375,9 +375,7 @@ const resultIcon = (result: SearchResult): string | Gio.Icon => {
     case "app":
       return result.app.iconName || "application-x-executable-symbolic";
     case "file":
-      return result.matchKind === "content"
-        ? "edit-find-symbolic"
-        : fileIcon(result.path);
+      return fileIcon(result.path);
     case "command":
       return result.sudo
         ? "dialog-password-symbolic"
