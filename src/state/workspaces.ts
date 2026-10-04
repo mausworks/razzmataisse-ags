@@ -1,18 +1,35 @@
 import Lua from "@lib/lua";
+import { createMutableFlags, MutableFlags } from "@lib/state";
 import AstalHyprland from "gi://AstalHyprland";
-import { createBinding } from "gnim";
+import {
+  Accessor,
+  createBinding,
+  createEffect,
+  createMemo,
+  createRoot,
+} from "gnim";
 
 const Hyprland = AstalHyprland.get_default()!;
 
-const MAX_WORKSPACE_ID = 10;
+export const WORKSPACE_FLAGS = {
+  CLOSED: 1,
+  OPEN: 2,
+  FILLER: 4,
+  FOCUSED: 8,
+} as const;
+
+/** One individual flag value from `WORKSPACE_FLAGS`. */
+export type WorkspaceFlag =
+  (typeof WORKSPACE_FLAGS)[keyof typeof WORKSPACE_FLAGS];
+
+/** Any bitwise combination of `WorkspaceFlag`s. */
+export type WorkspaceFlags = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
 export type WorkspaceId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 
 export type WorkspaceModel = {
   id: WorkspaceId;
-  isFocused: boolean;
-  isFiller: boolean;
-  isEmpty: boolean;
+  flags: MutableFlags<WorkspaceFlags>;
 };
 
 export const createWorkspacesActions = () => {
@@ -22,40 +39,39 @@ export const createWorkspacesActions = () => {
   return { focus };
 };
 
-const createEmptyWorkspaces = () =>
-  Array.from({ length: MAX_WORKSPACE_ID }, (_, i) => ({
-    id: (i + 1) as WorkspaceId,
-    isEmpty: true,
-    isFocused: false,
-    isFiller: false,
-  })) as WorkspaceModel[];
+const WORKSPACES: WorkspaceModel[] = Array.from({ length: 10 }, (_, i) => ({
+  id: (i + 1) as WorkspaceId,
+  flags: createMutableFlags<WorkspaceFlags>(WORKSPACE_FLAGS.CLOSED),
+}));
 
-export const createWorkspacesModel = () => {
-  const focusedId = createBinding(Hyprland, "focusedWorkspace").as(
-    (ws) => ws.id as WorkspaceId,
-  );
-  const open = createBinding(Hyprland, "workspaces");
-  const maxId = open.as((list) =>
-    list.reduce((val, { id }) => Math.max(val, id), 1),
-  );
-  const workspaces = open.as((list) => {
-    const workspaces = createEmptyWorkspaces();
+const workspaces = new Accessor(() => WORKSPACES);
+
+const openIds = createBinding(Hyprland, "workspaces").as((list) =>
+  list.map((ws) => ws.id),
+);
+const focusedId = createBinding(Hyprland, "focusedWorkspace").as((ws) => ws.id);
+const maxId = createMemo(() =>
+  openIds().reduce((max, id) => Math.max(max, id), focusedId()),
+);
+
+createRoot(() => {
+  createEffect(() => {
     const focused = focusedId();
-    const max = maxId();
+    const ids = openIds.peek();
+    const max = maxId.peek();
 
-    for (const ws of list) {
-      workspaces[ws.id - 1].isEmpty = false;
-      workspaces[ws.id - 1].isFocused = ws.id === focused;
-    }
+    WORKSPACES.forEach((ws) => {
+      const isOpen = ids.includes(ws.id);
+      const isFiller = !isOpen && ws.id <= max;
+      const isFocused = ws.id === focused;
 
-    for (let id = 1 as WorkspaceId; id <= max; id++) {
-      if (workspaces[id - 1].isEmpty) {
-        workspaces[id - 1].isFiller = true;
-      }
-    }
+      const flags = (Number(isOpen && WORKSPACE_FLAGS.OPEN) |
+        Number(isFiller && WORKSPACE_FLAGS.FILLER) |
+        Number(isFocused && WORKSPACE_FLAGS.FOCUSED)) as WorkspaceFlags;
 
-    return workspaces;
+      ws.flags.set(flags);
+    });
   });
+});
 
-  return { workspaces, focusedId, maxId };
-};
+export const createWorkspacesModel = () => ({ workspaces, focusedId, maxId });

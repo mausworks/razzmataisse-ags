@@ -6,7 +6,6 @@ import Pango from "gi://Pango";
 const Hyprland = AstalHyprland.get_default()!;
 
 const titleClass = defineStyle({
-  class: "WindowTitle",
   style: {
     opacity: 0.7,
     fontWeight: "normal",

@@ -207,38 +207,49 @@ const requireForId = {
   },
 };
 
+/** Every `@lib/css` registration function this rule protects -- each has
+ * the identical "exactly once, at module scope" contract in its own doc
+ * comment (defineStyle registers a class, defineKeyframes a @keyframes
+ * block, defineAnimation both via defineKeyframes internally). */
+const DEFINE_CALL_NAMES = new Set([
+  "defineStyle",
+  "defineKeyframes",
+  "defineAnimation",
+]);
+
 /**
- * `defineStyle()`'s own doc comment states the contract: "Must be called
- * exactly once per class name, at module scope -- calling it from inside a
- * render function re-registers (and throws) on every run." Right now
- * that's only enforced by a runtime throw the *second* time the enclosing
- * component re-renders -- this catches the mistake at lint time instead.
+ * `defineStyle()`/`defineKeyframes()`/`defineAnimation()`'s own doc
+ * comments state the contract: "Must be called exactly once ..., at module
+ * scope -- calling it from inside a render function re-registers (and
+ * throws) on every run." Right now that's only enforced by a runtime throw
+ * the *second* time the enclosing component re-renders -- this catches the
+ * mistake at lint time instead.
  *
- * One addition on top of "module scope only": a `defineStyle()` call is
- * also allowed one function deep, if that function is itself declared at
- * module scope and its name matches `/^define[A-Z]/` -- the
- * `defineBarMeter`-style pattern (see ui/BarMeter.tsx) of a factory that
- * builds a family of related classes (and often a component) together.
- * That factory function still only *runs* once, at module-evaluation time
- * (its call site is itself typically a module-scope `const X = defineY(...)`),
- * so the same "exactly once" contract holds -- it's just spread across
- * more than one class.
+ * One addition on top of "module scope only": a call is also allowed one
+ * function deep, if that function is itself declared at module scope and
+ * its name matches `/^define[A-Z]/` -- the `defineBarMeter`-style pattern
+ * (see ui/BarMeter.tsx) of a factory that builds a family of related
+ * classes/keyframes (and often a component) together. That factory
+ * function still only *runs* once, at module-evaluation time (its call
+ * site is itself typically a module-scope `const X = defineY(...)`), so
+ * the same "exactly once" contract holds -- it's just spread across more
+ * than one class/keyframes block.
  */
-const requireDefineStyleScope = {
+const requireDefineScope = {
   meta: {
     type: "problem",
     docs: {
       description:
-        "Restrict defineStyle() to module scope (or one function deep, inside a module-scope define* factory).",
+        "Restrict defineStyle()/defineKeyframes()/defineAnimation() to module scope (or one function deep, inside a module-scope define* factory).",
     },
     schema: [],
     messages: {
       wrongScope:
-        "defineStyle() must be called at module scope, or one function " +
+        "{{callee}}() must be called at module scope, or one function " +
         "deep inside a module-scope factory function named define* (e.g. " +
         "defineBarMeter) -- calling it anywhere else (a component body, a " +
         "nested closure, a non-module-scope function) re-registers the " +
-        "same CSS class on every call and throws after the first.",
+        "same class/keyframes on every call and throws after the first.",
     },
   },
   create(context) {
@@ -272,7 +283,7 @@ const requireDefineStyleScope = {
       CallExpression(node) {
         if (
           node.callee.type !== "Identifier" ||
-          node.callee.name !== "defineStyle"
+          !DEFINE_CALL_NAMES.has(node.callee.name)
         ) {
           return;
         }
@@ -287,7 +298,11 @@ const requireDefineStyleScope = {
           return; // one function deep, inside a module-scope define* factory -- OK
         }
 
-        context.report({ node, messageId: "wrongScope" });
+        context.report({
+          node,
+          messageId: "wrongScope",
+          data: { callee: node.callee.name },
+        });
       },
     };
   },
@@ -809,7 +824,7 @@ const preferTransitionHelper = {
 export default {
   rules: {
     "require-for-id": requireForId,
-    "require-definestyle-scope": requireDefineStyleScope,
+    "require-define-scope": requireDefineScope,
     "require-transform-space-separator": requireTransformSpaceSeparator,
     "require-valid-transform-units": requireValidTransformUnits,
     "prefer-transition-helper": preferTransitionHelper,

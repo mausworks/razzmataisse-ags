@@ -21,7 +21,7 @@
  * exported so `@typescript-eslint/no-unused-vars` doesn't add noise
  * unrelated to what's actually being tested here.
  */
-import { defineStyle } from "@lib/css";
+import { defineAnimation, defineKeyframes, defineStyle } from "@lib/css";
 import { createState, For } from "ags";
 
 type KeyedItem = { id: number; label: string };
@@ -75,12 +75,14 @@ export const ForWithSpread = () => {
   );
 };
 
-// --- local/require-definestyle-scope ---
+// --- local/require-define-scope ---
+// (shared by defineStyle(), defineKeyframes(), and defineAnimation() --
+// all three have the identical "exactly once, at module scope" contract.)
 
 defineStyle({ class: "ExampleModuleScope", style: { opacity: 1 } }); // valid -- called at module scope
 
 export const ExampleWrongScope = () => {
-  // eslint-disable-next-line local/require-definestyle-scope -- called inside an ordinary function, not a define* factory
+  // eslint-disable-next-line local/require-define-scope -- called inside an ordinary function, not a define* factory
   defineStyle({ class: "ExampleWrongScope", style: { opacity: 1 } });
 };
 
@@ -92,7 +94,7 @@ export const exampleWidget = defineExampleWidget();
 
 const defineNestedFactory = () => {
   const registerStyle = () => {
-    // eslint-disable-next-line local/require-definestyle-scope -- two functions deep inside the define* factory, not one
+    // eslint-disable-next-line local/require-define-scope -- two functions deep inside the define* factory, not one
     defineStyle({ class: "ExampleNestedFactory", style: { opacity: 1 } });
   };
   return registerStyle;
@@ -101,10 +103,27 @@ export const nestedFactory = defineNestedFactory();
 
 export const wrapDefineWidget = () => {
   const defineInnerWidget = () => {
-    // eslint-disable-next-line local/require-definestyle-scope -- the define* factory itself isn't at module scope
+    // eslint-disable-next-line local/require-define-scope -- the define* factory itself isn't at module scope
     defineStyle({ class: "ExampleInnerFactory", style: { opacity: 1 } });
   };
   return defineInnerWidget();
+};
+
+export const ExampleKeyframesWrongScope = () => {
+  // eslint-disable-next-line local/require-define-scope -- defineKeyframes() shares the same module-scope contract
+  defineKeyframes({
+    name: "ExampleKeyframesWrongScope",
+    from: { opacity: 0 },
+    to: { opacity: 1 },
+  });
+};
+
+export const ExampleAnimationWrongScope = () => {
+  // eslint-disable-next-line local/require-define-scope -- defineAnimation() shares the same module-scope contract too
+  defineAnimation({
+    keyframes: { from: { opacity: 0 }, to: { opacity: 1 } },
+    defaults: { duration: 300 },
+  });
 };
 
 // --- local/require-transform-space-separator ---

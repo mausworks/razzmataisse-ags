@@ -1,22 +1,21 @@
-import { defineStyle } from "@lib/css";
+import { alpha, defineStyle, transitions } from "@lib/css";
 import {
   createWorkspacesActions,
   createWorkspacesModel,
+  WORKSPACE_FLAGS,
   WorkspaceId,
   WorkspaceModel,
 } from "@state/workspaces";
 import theme from "@theme";
-import defineBarMeter from "@ui/BarMeter";
 import Overlay from "@ui/Overlay";
+import defineProgressMeter from "@ui/ProgressMeter";
 import Square from "@ui/Square";
 import { For } from "ags";
 import { Gtk } from "ags/gtk4";
 
-const BarTheme = theme.bar;
-
 const MAX_WORKSPACES = 10;
-const ORB_SIZE = BarTheme.workspaceIndicator.orbSize;
-const ORB_SPACING = BarTheme.workspaceIndicator.orbSpacing;
+const ORB_SIZE = theme.bar.workspaceIndicator.size;
+const ORB_SPACING = theme.bar.workspaceIndicator.spacing;
 const CONTAINER_WIDTH = ORB_SPACING + (ORB_SIZE + ORB_SPACING) * MAX_WORKSPACES;
 
 export default function Workspaces() {
@@ -43,40 +42,25 @@ export default function Workspaces() {
         </box>
       }
     >
-      <Track opacity={0.1} progress={maxId.as((max) => max - 1)} />
+      <Track progress={maxId.as((max) => max - 1)} />
     </Overlay>
   );
 }
 
-const Track = defineBarMeter({
-  class: "ws-track",
-  radius: 9999,
-  transition: "100ms linear",
-  paddingX: ORB_SPACING,
-  background: theme.bar.palette.text,
-  segment: {
-    count: MAX_WORKSPACES,
-    width: ORB_SIZE + ORB_SPACING,
-    height: ORB_SIZE + ORB_SPACING,
-  },
-});
-
-type WorkspaceButtonProps = Partial<WorkspaceModel> & {
+type WorkspaceButtonProps = WorkspaceModel & {
   onClicked?: (id: WorkspaceId) => void;
 };
 
 const WorkspaceButton: FC<WorkspaceButtonProps> = ({
   id,
   onClicked,
-  isFocused,
-  isEmpty,
-  isFiller,
+  flags,
 }) => {
-  const variant = [
-    isEmpty && "empty",
-    isFiller && "filler",
-    isFocused && "focused",
-  ] as const;
+  const open = flags.has(WORKSPACE_FLAGS.OPEN).as((on) => on && "open");
+  const filler = flags.has(WORKSPACE_FLAGS.FILLER).as((on) => on && "filler");
+  const focused = flags
+    .has(WORKSPACE_FLAGS.FOCUSED)
+    .as((on) => on && "focused");
 
   return (
     <Square
@@ -85,54 +69,79 @@ const WorkspaceButton: FC<WorkspaceButtonProps> = ({
       halign={Gtk.Align.START}
       valign={Gtk.Align.START}
     >
-      <button onClicked={() => id && onClicked?.(id)} class={buttonCX(variant)}>
-        <label class={buttonLabelCX(variant)} label={String(id ?? "")} />
+      <button
+        widthRequest={ORB_SIZE}
+        heightRequest={ORB_SIZE}
+        class={buttonClass(open, filler, focused)}
+        onClicked={() => onClicked?.(id)}
+      >
+        <label
+          yalign={0.5}
+          xalign={0.5}
+          class={buttonLabelClass(open, filler, focused)}
+          label={String(id)}
+        />
       </button>
     </Square>
   );
 };
 
-const buttonCX = defineStyle({
-  class: "ws-button",
+const Track = defineProgressMeter({
+  radius: 9999,
+  transition: {
+    grow: "300ms ease",
+    shrink: "300ms 100ms ease",
+  },
+  paddingX: ORB_SPACING,
+  background: alpha(theme.bar.palette.text, 0.08),
+  segment: {
+    count: MAX_WORKSPACES,
+    width: ORB_SIZE + ORB_SPACING,
+    height: ORB_SIZE + ORB_SPACING,
+  },
+});
+
+const buttonClass = defineStyle({
   style: {
     background: "none",
     border: "none",
     padding: 0,
-    minWidth: 0,
-    minHeight: 0,
+    minWidth: ORB_SIZE,
+    minHeight: ORB_SIZE,
     borderRadius: 9999,
+    boxShadow: "none",
   },
   variants: {
-    empty: {},
+    open: {},
     filler: {},
     focused: {},
   },
 });
 
-const buttonLabelCX = defineStyle({
-  class: "ws-button-label",
+const buttonLabelClass = defineStyle({
   style: {
     background: "none",
-    color: theme.bar.palette.text,
+    color: alpha(theme.bar.palette.text, 0.5),
     border: "none",
     fontFeatureSettings: '"tnum"',
-    fontSize: "small",
-    opacity: 1,
+    fontSize: 12,
+    fontWeight: "bold",
+    fontFamily: "monospace",
     padding: 0,
-    minWidth: 0,
-    minHeight: 0,
-    transform: "scale(1)",
-    transition: "transform 1s linear",
+    opacity: 0,
+    transformOrigin: "center center",
+    transition: transitions({
+      opacity: "300ms ease-out",
+    }),
   },
   variants: {
-    empty: {
-      transform: "scale(0)",
-    },
-    filler: {
-      transform: "scale(0)",
-    },
+    open: { opacity: 0 },
+    filler: { opacity: 0 },
     focused: {
-      transform: "scale(1)",
+      opacity: 1,
+      transition: transitions({
+        opacity: "300ms 250ms ease-out",
+      }),
     },
   },
 });
