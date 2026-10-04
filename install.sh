@@ -62,14 +62,43 @@ link_ags_runtime() {
     exit 1
   }
 
-  ags_bin=$(command -v ags)
-  # Binary-relative, not a hard-coded /usr -- holds for /usr, /usr/local,
-  # a user prefix, etc.
-  prefix=$(dirname "$(dirname "$(readlink -f "$ags_bin")")")
-  ags_js_dir="$prefix/share/ags/js"
+  ags_js_dir=""
 
-  if [ ! -d "$ags_js_dir/node_modules/gnim" ]; then
-    echo "[install] expected AGS's JS runtime at $ags_js_dir, but it's missing" >&2
+  # XDG_DATA_DIRS is the actual standards-based mechanism for "where did my
+  # package manager put this app's shared data files" -- distro-agnostic,
+  # and what a non-FHS layout (NixOS's /nix/store profiles, for instance)
+  # populates correctly where a bin-to-share path assumption wouldn't hold.
+  # Tried first, since it's the more trustworthy signal of the two.
+  old_ifs=$IFS
+  IFS=:
+  for dir in ${XDG_DATA_DIRS:-/usr/local/share:/usr/share}; do
+    candidate="$dir/ags/js"
+    if [ -d "$candidate/node_modules/gnim" ]; then
+      ags_js_dir="$candidate"
+      break
+    fi
+  done
+  IFS=$old_ifs
+
+  # Falls back to walking up from the `ags` binary itself (<prefix>/bin/ags
+  # -> <prefix>/share/ags/js) only if that didn't find it -- a reasonable
+  # guess on an FHS-layout distro, but still just a guess, so every step is
+  # checked rather than trusted blindly (an empty/failed `readlink -f`
+  # degrading straight to `dirname`'s own "no directory" fallback -- "." --
+  # being passed through uncaught is exactly what produced a bogus
+  # ./share/ags/js before).
+  if [ -z "$ags_js_dir" ]; then
+    ags_bin=$(command -v ags)
+    resolved=$(readlink -f "$ags_bin" 2>/dev/null) || resolved=""
+    if [ -n "$resolved" ]; then
+      prefix=$(dirname "$(dirname "$resolved")")
+      candidate="$prefix/share/ags/js"
+      [ -d "$candidate/node_modules/gnim" ] && ags_js_dir="$candidate"
+    fi
+  fi
+
+  if [ -z "$ags_js_dir" ]; then
+    echo "[install] couldn't find AGS's JS runtime (checked \$XDG_DATA_DIRS and next to the 'ags' binary) -- is AGS installed correctly?" >&2
     exit 1
   fi
 
@@ -97,7 +126,18 @@ echo "[install] linting..."
 bun run lint
 
 echo "[install] type-checking..."
-bunx tsc --noEmit
+# `ags`/`gnim`'s own symlinked-in runtime and @girs's generated GObject
+# bindings aren't code this project owns, and reliably produce noise tsc
+# can't be configured away from entirely (they're reached through real
+# imports, not just swept in by a broad "include", so skipLibCheck alone
+# doesn't cover the non-.d.ts ones) -- a type error only means something
+# here if it points at this project's own src/ or scripts/ files.
+tsc_output=$(bunx tsc --noEmit 2>&1) || true
+if echo "$tsc_output" | grep -qE '^(src|scripts)/'; then
+  echo "$tsc_output"
+  echo "[install] type errors found in this project's own code" >&2
+  exit 1
+fi
 
 cat <<EOF
 

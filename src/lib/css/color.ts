@@ -211,7 +211,8 @@ export const mix = (
   first: Color | ({} & string),
   second: Color | ({} & string),
   factor: Fraction = 0.5,
-) => `mix(${first}, ${second}, ${factor})` as MixColorFilter;
+): MixColorFilter =>
+  `mix(${String(first)}, ${String(second)}, ${factor})` as MixColorFilter;
 
 /**
  * GTK CSS `shade()`. `color` scaled towards white or black. `factor` > 1
