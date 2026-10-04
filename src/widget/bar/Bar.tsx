@@ -7,8 +7,8 @@ import GLib from "gi://GLib";
 
 import BluetoothButton from "./BluetoothButton";
 import Clock from "./Clock";
+import LauncherButton from "./LauncherButton";
 import NetworkButton from "./NetworkButton";
-import SearchButton from "./SearchButton";
 import VolumeButton from "./VolumeButton";
 import WindowTitle from "./WindowTitle";
 import WorkspaceControls from "./WorkspaceControls";
@@ -43,7 +43,7 @@ export default function Bar({ monitor }: BarProps) {
     >
       <centerbox class={containerClass}>
         <box $type="start" spacing={8}>
-          <SearchButton />
+          <LauncherButton />
           <WorkspaceControls />
         </box>
         <box $type="center">

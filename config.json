@@ -2,6 +2,7 @@
   "$schema": "./schemas/config.schema.json",
   "search": {
     "grepCommand": "rg",
+    "roots": ["~"],
     "ignoredDesktopEntries": [
       "*cmake*",
       "*ccmake*",

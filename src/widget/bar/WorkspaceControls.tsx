@@ -137,11 +137,6 @@ const buttonLabelClass = defineStyle({
   variants: {
     open: { opacity: 1, color: alpha(theme.bar.palette.text, 0.1) },
     filler: { opacity: 1, color: alpha(theme.bar.palette.text, 0.1) },
-    // A focused workspace is also "open" -- both variant classes end up
-    // applied together (see `cx`'s composition), so `color` has to be
-    // restored explicitly here or it'd inherit the dim one from `open`
-    // above instead (same specificity, so source order decides, and this
-    // rule already needs to come after `open` for `opacity`).
     focused: {
       opacity: 1,
       color: alpha(theme.bar.palette.text, 0.5),

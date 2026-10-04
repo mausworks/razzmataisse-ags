@@ -4,7 +4,8 @@ import { execAsync } from "ags/process";
 import AstalApps from "gi://AstalApps?version=0.1";
 import GLib from "gi://GLib?version=2.0";
 
-const { grepCommand, ignoreGlobs, ignoredDesktopEntries } = config.search;
+const { grepCommand, roots, ignoreGlobs, ignoredDesktopEntries } =
+  config.search;
 
 /** `*cmake*` -> case-insensitive "contains cmake", not a full glob dialect. */
 const globToRegExp = (glob: string): RegExp =>
@@ -81,12 +82,21 @@ const searchApps = (query: string): SearchResult[] =>
 
 export const HOME = GLib.get_home_dir();
 
+/** `~/foo` -> `/home/maus/foo`; ripgrep itself never expands this. */
+const expandRoot = (root: string): string =>
+  root === "~"
+    ? HOME
+    : root.startsWith("~/")
+      ? `${HOME}${root.slice(1)}`
+      : root;
+
+const searchRoots = roots.map(expandRoot);
+
 const MAX_FILE_RESULTS = 8;
 
 /**
- * Filenames and file contents under $HOME, via `config.search.grepCommand`
- * (`rg` by default -- not installed on this system by default, see the
- * user-facing note in SearchWindow.tsx). The flags below are ripgrep's --
+ * Filenames and file contents under `config.search.roots`, via
+ * `config.search.grepCommand` (`rg` by default).
  * `grepCommand` only swaps which binary gets run, not the dialect, so it's
  * really "point at a different/renamed ripgrep build" rather than "use any
  * grep-like tool". Both run in parallel; ripgrep exits non-zero on "no
@@ -104,7 +114,7 @@ const searchFiles = async (query: string): Promise<SearchResult[]> => {
       "--iglob",
       `*${query}*`,
       ...globArgs,
-      HOME,
+      ...searchRoots,
     ]).catch(() => ""),
     execAsync([
       grepCommand,
@@ -114,7 +124,7 @@ const searchFiles = async (query: string): Promise<SearchResult[]> => {
       "--max-count=1",
       ...globArgs,
       query,
-      HOME,
+      ...searchRoots,
     ]).catch(() => ""),
   ]);
 
@@ -168,8 +178,6 @@ export const runResult = (result: SearchResult) => {
       break;
     case "command": {
       const shellCmd = result.sudo ? `sudo ${result.cmd}` : result.cmd;
-      // `exec $SHELL` after the command keeps the terminal open to show
-      // its output/exit status instead of flashing shut immediately.
       execAsync([
         "kitty",
         "sh",
@@ -181,7 +189,7 @@ export const runResult = (result: SearchResult) => {
   }
 };
 
-export const createSearchModel = () => {
+export const createLauncherModel = () => {
   const [query, setQuery] = createState("");
   const [results, setResults] = createState<SearchResult[]>(topResults());
 
@@ -189,15 +197,8 @@ export const createSearchModel = () => {
   let searchToken = 0;
 
   const search = (text: string) => {
-    // Cancel any in-flight file search unconditionally -- every branch
-    // below can replace the result set, and a stale debounced search from
-    // a previous (now-irrelevant) query shouldn't be able to append to it
-    // after the fact, e.g. after switching into command mode.
     if (debounceTimer) clearTimeout(debounceTimer);
 
-    // `$`/`#` command mode: no apps, no files, no recents -- just the one
-    // command result once there's actually a command typed after the
-    // prefix (none yet -> empty list, not a stale/irrelevant one).
     if (text.startsWith("$") || text.startsWith("#")) {
       const command = parseCommand(text);
       setResults(command ? [command] : []);
@@ -215,8 +216,6 @@ export const createSearchModel = () => {
     debounceTimer = setTimeout(() => {
       searchFiles(text)
         .then((fileResults) => {
-          // A later keystroke already started a newer search -- these
-          // results are for a query that's no longer current.
           if (token !== searchToken) return;
           setResults((current) => [...current, ...fileResults]);
         })

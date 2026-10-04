@@ -14,12 +14,18 @@
     "search": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["grepCommand", "ignoredDesktopEntries", "ignoreGlobs"],
+      "required": ["grepCommand", "roots", "ignoredDesktopEntries", "ignoreGlobs"],
       "properties": {
         "grepCommand": {
           "type": "string",
           "minLength": 1,
-          "description": "The ripgrep-compatible binary used for the search panel's file search (name on $PATH, or an absolute path)."
+          "description": "The ripgrep-compatible binary used for the launcher's file search (name on $PATH, or an absolute path)."
+        },
+        "roots": {
+          "type": "array",
+          "description": "Directories searched for files, expanded from a leading '~' to the home directory (ripgrep itself has no shell to do that expansion for it).",
+          "items": { "type": "string", "minLength": 1 },
+          "minItems": 1
         },
         "ignoredDesktopEntries": {
           "type": "array",

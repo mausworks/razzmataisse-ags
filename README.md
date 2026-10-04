@@ -5,7 +5,7 @@ A custom [Hyprland](https://hyprland.org) desktop shell built with
 and [gnim](https://github.com/aylur/gnim) — GTK4 widgets written in
 TypeScript/JSX, styled using CSS-in-JS from '@lib/css'.
 
-![Bar, calendar popover, and search panel](docs/shots/desktop-overview.png)
+![Bar, calendar popover, and launcher panel](docs/shots/desktop-overview.png)
 
 This project emphasizes portability, ergonomics, and DX — nothing assumes
 *your* home directory, *your* username, or any other detail of your
@@ -16,9 +16,9 @@ _Getting started is easy, and customizations are a breeze!_
 ## What's in it
 
 - **Bar** ('src/widget/bar') — a top bar with workspace indicators, the
-  active window's title, a search launcher button, and status pills for
-  network, Bluetooth, volume, and the clock, each opening its own popover.
-- **Search** ('src/widget/search') — a 'SUPER + Space' launcher that docks
+  active window's title, a launcher button, and status pills for network,
+  Bluetooth, volume, and the clock, each opening its own popover.
+- **Launcher** ('src/widget/launcher') — a 'SUPER + Space' launcher that docks
   below the bar and expands to a centered panel once you start typing.
   Fuzzy-searches installed apps, searches filenames and file contents under
   '$HOME' via 'rg', shows themed per-file-type icons, and supports
@@ -44,7 +44,7 @@ itself. Both are validated against JSON schemas in [schemas/](schemas/)
 - [AGS](https://aylur.github.io/ags-docs/) (with GTK4/Astal)
 - [Bun](https://bun.sh)
 - [ripgrep](https://github.com/BurntSushi/ripgrep) ('rg') — used for the
-  search panel's file search; configurable via 'config.json'
+  launcher's file search; configurable via 'config.json'
 
 ## Getting started
 

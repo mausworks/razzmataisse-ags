@@ -1,5 +1,5 @@
 import Bar from "@widget/bar";
-import SearchWindow from "@widget/search/SearchWindow";
+import LauncherWindow from "@widget/launcher/LauncherWindow";
 import app from "ags/gtk4/app";
 
 app.start({
@@ -7,9 +7,6 @@ app.start({
     const monitors = app.get_monitors();
     monitors.map((monitor) => Bar({ monitor }));
 
-    // A single window, not one per monitor -- `app.toggle_window("search")`
-    // (and the SUPER + Space keybind) only makes sense for one uniquely
-    // named window.
-    SearchWindow({ monitor: monitors[0] });
+    LauncherWindow({ monitor: monitors[0] });
   },
 });

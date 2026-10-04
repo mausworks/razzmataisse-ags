@@ -1,7 +1,7 @@
 import { alpha, defineStyle } from "@lib/css";
 import { withLayerBlur } from "@lib/hyprland";
 import {
-  createSearchModel,
+  createLauncherModel,
   HOME,
   runResult,
   type SearchResult,
@@ -17,20 +17,18 @@ const { palette } = theme.bar;
 /** Matches `Bar.tsx`'s own bar height -- keeps the docked position flush. */
 const BAR_HEIGHT = 34;
 const DOCK_GAP = 12;
-// Matches the bar's own `containerClass` padding, so the docked panel lines
-// up under the search button instead of the window's left edge.
 const DOCK_MARGIN_LEFT = 12;
 const PANEL_WIDTH_DOCKED = 360;
 const PANEL_WIDTH_ACTIVE = 460;
 
-export type SearchWindowProps = {
+export type LauncherWindowProps = {
   monitor: Gdk.Monitor;
 };
 
 /**
- * A single global window (not one per monitor -- `app.toggle_window("search")`
- * only makes sense for one uniquely-named window), toggled by `SearchButton`
- * and the `SUPER + Space` keybind (`ags toggle search`, see keybinds.lua).
+ * A single global window (not one per monitor -- `app.toggle_window("launcher")`
+ * only makes sense for one uniquely-named window), toggled by `LauncherButton`
+ * and the `SUPER + Space` keybind (`ags toggle launcher`, see keybinds.lua).
  *
  * Docked at the far left below the bar (anchored `TOP | LEFT`) while the
  * query is empty; once typing starts, switches to no anchor at all, which
@@ -46,22 +44,13 @@ const PLACEHOLDER: Record<SearchMode, string> = {
   hash: "Command to run as root…",
 };
 
-export default function SearchWindow({ monitor }: SearchWindowProps) {
-  const { query, results, setText, reset } = createSearchModel();
+export default function LauncherWindow({ monitor }: LauncherWindowProps) {
+  const { query, results, setText, reset } = createLauncherModel();
   const isActive = query.as((text) => text.length > 0);
 
-  // The "$"/"#" prefix is never shown in the entry itself once it's
-  // switched the icon over -- that'd be showing the same thing twice. So
-  // unlike `query` (the full, logical "$cmd" text search.ts works with),
-  // `mode` can't just be derived from the entry's own text content anymore
-  // (the prefix character isn't in there after the swap) -- it's tracked
-  // explicitly, with the entry and the model's `query` kept in sync by
-  // hand in onNotifyText below.
   const [mode, setMode] = createState<SearchMode>("search");
 
   const [selectedIndex, setSelectedIndex] = createState(0);
-  // A new set of results (new query, or a fresh rescan) should always start
-  // back at the top, not wherever the previous list happened to leave it.
   createEffect(() => {
     results();
     setSelectedIndex(0);
@@ -78,19 +67,6 @@ export default function SearchWindow({ monitor }: SearchWindowProps) {
   let entry: Gtk.Entry | undefined;
   let win: Gtk.Window | undefined;
 
-  // GTK4 (layer-shell surfaces included) sizes a window to its content's
-  // natural size automatically -- but only grows; once allocated at some
-  // size it doesn't shrink back down on its own when that content gets
-  // smaller, leaving dead space below a short result list. Resetting the
-  // default size on every result-count change forces a fresh measurement
-  // instead of treating the largest-ever size as a floor.
-  //
-  // Height is left as "natural" (-1), but width is pinned explicitly rather
-  // than also reset to -1: `panelClass`'s `widthRequest` is only a GTK
-  // *minimum*, not a cap, so a long result label's natural (un-ellipsized)
-  // width can still grow the window past it -- pinning width here is what
-  // actually makes 360/460 a hard size, forcing labels to ellipsize against
-  // it instead of growing the window around themselves.
   createEffect(() => {
     const width = isActive() ? PANEL_WIDTH_ACTIVE : PANEL_WIDTH_DOCKED;
     results();
@@ -100,13 +76,13 @@ export default function SearchWindow({ monitor }: SearchWindowProps) {
   const runSelected = () => {
     const selected = results.peek()[selectedIndex.peek()];
     if (selected) runResult(selected);
-    app.get_window("search")!.visible = false;
+    app.get_window("launcher")!.visible = false;
   };
 
   return (
     <window
-      name="search"
-      namespace="search"
+      name="launcher"
+      namespace="launcher"
       visible={false}
       class={windowClass}
       gdkmonitor={monitor}
@@ -143,10 +119,6 @@ export default function SearchWindow({ monitor }: SearchWindowProps) {
               moveSelection(1);
               return true;
             case Gdk.KEY_BackSpace:
-              // The prefix itself isn't in the entry's text, so there's
-              // nothing left for a normal backspace to delete once the
-              // field reads empty -- that keypress is the signal to drop
-              // back to search mode instead.
               if (mode.peek() !== "search" && !entry?.text) {
                 setMode("search");
                 setText("");
@@ -174,7 +146,7 @@ export default function SearchWindow({ monitor }: SearchWindowProps) {
             valign={Gtk.Align.CENTER}
           >
             <image
-              iconName="system-search-symbolic"
+              iconName="go-next-symbolic"
               visible={mode.as((current) => current === "search")}
             />
             <image
@@ -201,9 +173,6 @@ export default function SearchWindow({ monitor }: SearchWindowProps) {
                 const prefix = typed[0] as "$" | "#";
                 const rest = typed.slice(1);
                 setMode(prefix === "$" ? "dollar" : "hash");
-                // Triggers this same handler again with `rest`, which the
-                // mode switch above means falls through to the branch
-                // below instead -- setText() still runs once either way.
                 self.set_text(rest);
                 setText(prefix + rest);
                 return;
@@ -229,7 +198,7 @@ export default function SearchWindow({ monitor }: SearchWindowProps) {
                 selected={createComputed(() => index() === selectedIndex())}
                 onRun={() => {
                   runResult(result);
-                  app.get_window("search")!.visible = false;
+                  app.get_window("launcher")!.visible = false;
                 }}
               />
             )}
@@ -318,10 +287,6 @@ const compactPath = (path: string): string => {
 
   let head = segments[0]!;
   let i = 1;
-  // "~" alone conveys nothing -- it's just "somewhere under home" -- so
-  // when the path starts there, the first *real* directory under it is
-  // kept unconditionally too, same as an absolute path's very first
-  // segment is below, regardless of how long that name is.
   if (head === "~" && segments.length > 1) {
     head = `${head}/${segments[1]}`;
     i = 2;
@@ -338,13 +303,6 @@ const compactPath = (path: string): string => {
 
 const formatPath = (path: string) => compactPath(prettifyPath(path));
 
-// shared-mime-info gets a handful of extensions wrong, or doesn't know them
-// at all, for exactly the stack this project (and its search results) live
-// in: `.ts` collides with Qt Linguist translation files, `.tsx` with the
-// Tiled map editor's tileset format, and `.jsx` isn't registered at all. The
-// installed icon theme has no dedicated TypeScript icon either, so these
-// fall back to the JavaScript one -- the closest available match -- instead
-// of the generic blank-file icon `content_type_guess` would otherwise pick.
 const EXTENSION_ICON_OVERRIDES: Record<string, string[]> = {
   ts: ["text-x-javascript", "text-x-generic"],
   tsx: ["text-x-javascript", "text-x-generic"],
@@ -429,8 +387,6 @@ const entryWrapperClass = defineStyle({
   },
 })();
 
-// Fixed size so the row doesn't twitch horizontally when swapping between
-// the image icon and the "$"/"#" glyph -- their natural sizes differ.
 const iconSlotClass = defineStyle({
   style: {
     minWidth: 16,
@@ -476,15 +432,12 @@ const rowClass = defineStyle({
     },
   },
   variants: {
-    // The keyboard-navigated row, independent of actual pointer hover.
     selected: {
       background: alpha(palette.accent, 0.16),
     },
   },
 });
 
-// A real (opaque) gray, not `alpha(palette.text, …)` -- see BarPopover.tsx
-// for why: an alpha-blended fade shifts with whatever's behind it.
 const subtitleClass = defineStyle({
   style: {
     color: "#8E8E93",

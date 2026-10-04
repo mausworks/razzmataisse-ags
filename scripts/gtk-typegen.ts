@@ -166,9 +166,6 @@ app.start({
         "\n" +
         'export type { ThemeColor } from "./colors";\n' +
         'export type { IconName } from "./icons";\n' +
-        // types.d.ts is hand-maintained, not generated -- re-exporting it
-        // here (rather than folding its content into this file) means this
-        // wholesale overwrite can't ever silently delete it.
         'export type { NiceWidgetProps } from "./types";\n',
     );
 

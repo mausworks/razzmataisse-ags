@@ -93,7 +93,7 @@ const blurredNamespaces = new Set<string>();
  * ```tsx
  * <window namespace="bar" $={withLayerBlur()}>
  * // or composed with the window's own ref logic:
- * <window namespace="search" $={withLayerBlur((self) => { ... })}>
+ * <window namespace="launcher" $={withLayerBlur((self) => { ... })}>
  * ```
  */
 export const withLayerBlur =
