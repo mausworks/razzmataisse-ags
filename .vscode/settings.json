@@ -7,7 +7,4 @@
   },
   "eslint.validate": ["typescript", "typescriptreact"],
   "eslint.format.enable": true,
-  "[json]": {
-    "editor.defaultFormatter": "ms-vsliveshare.vsliveshare"
-  }
 }
