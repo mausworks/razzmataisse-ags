@@ -35,22 +35,26 @@ const makeUser = (name: string) => ({ name, id: crypto.randomUUID() }) as User;
 const makeUser = (name: string): User => ({ name, id: crypto.randomUUID() });
 ```
 
-Pick the specific field(s) a function actually needs out via destructuring,
-rather than threading the whole object through and reaching into it by name
-wherever it's used.
+When only specific field(s) of an object are needed — not the object
+itself — pick them out via destructuring, rather than reaching into the
+object by name wherever they're used. But when the object itself is also
+needed as a whole (passed along elsewhere, say), prefer dot access for its
+individual fields instead — destructuring one out separately just gives
+two names for overlapping concerns.
 
 ```ts
-// Prefer
-const { namespace } = self;
-if (!blurredNamespaces.has(namespace)) { /* ... */ }
+// Prefer (self is also needed whole, passed to ref())
+if (!blurredNamespaces.has(self.namespace)) { /* ... */ }
+ref?.(self);
 
 // Not
-if (!blurredNamespaces.has(self.namespace)) { /* ... */ }
+const { namespace } = self;
+if (!blurredNamespaces.has(namespace)) { /* ... */ }
+ref?.(self);
 ```
 
-For a plain props object, do the picking in the function signature itself
-— unlike `self` above, there's usually no need to hang on to the whole
-object too.
+For a plain props object that the function itself has no other use for as
+a whole, do the picking in the function signature.
 
 ```tsx
 // Prefer

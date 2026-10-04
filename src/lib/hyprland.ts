@@ -74,10 +74,9 @@ const blurredNamespaces = new Set<string>();
 export const withLayerBlur =
   <W extends Astal.Window>(ref?: (self: W) => void, ignoreAlpha?: number) =>
   (self: W) => {
-    const { namespace } = self;
-    if (!blurredNamespaces.has(namespace)) {
-      blurredNamespaces.add(namespace);
-      enableLayerBlur(namespace, ignoreAlpha);
+    if (!blurredNamespaces.has(self.namespace)) {
+      blurredNamespaces.add(self.namespace);
+      enableLayerBlur(self.namespace, ignoreAlpha);
     }
     ref?.(self);
   };
