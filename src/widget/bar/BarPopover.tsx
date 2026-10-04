@@ -47,7 +47,7 @@ export default function BarPopover({ children, $ }: BarPopoverProps) {
 export type BarCalendarProps = NiceWidgetProps<propsof<typeof Gtk.Calendar>>;
 
 /** A `Gtk.Calendar`, matched to the same dark palette, with week numbers on. */
-export function BarCalendar({ ...props }: BarCalendarProps) {
+export function BarCalendar(props: BarCalendarProps) {
   return <Gtk.Calendar showWeekNumbers {...props} class={calendarClass} />;
 }
 

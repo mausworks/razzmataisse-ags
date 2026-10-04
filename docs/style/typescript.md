@@ -35,20 +35,27 @@ const makeUser = (name: string) => ({ name, id: crypto.randomUUID() }) as User;
 const makeUser = (name: string): User => ({ name, id: crypto.randomUUID() });
 ```
 
-Destructure a component's props in the function signature, not off a
-`props` object in the body — the signature itself should show what the
-component actually reads. When every prop is just forwarded wholesale with
-nothing picked out individually, destructure as `{ ...props }` anyway, for
-the same reason and for consistency with the general case.
+Pick the specific field(s) a function actually needs out via destructuring,
+rather than threading the whole object through and reaching into it by name
+wherever it's used.
+
+```ts
+// Prefer
+const { namespace } = self;
+if (!blurredNamespaces.has(namespace)) { /* ... */ }
+
+// Not
+if (!blurredNamespaces.has(self.namespace)) { /* ... */ }
+```
+
+For a plain props object, do the picking in the function signature itself
+— unlike `self` above, there's usually no need to hang on to the whole
+object too.
 
 ```tsx
 // Prefer
 function Row({ label, onClick }: RowProps) {
   return <button onClicked={onClick}>{label}</button>;
-}
-
-function Calendar({ ...props }: CalendarProps) {
-  return <Gtk.Calendar {...props} class={calendarClass} />;
 }
 
 // Not
