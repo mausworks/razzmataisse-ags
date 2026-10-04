@@ -338,6 +338,8 @@ const resultIcon = (result: SearchResult): string | Gio.Icon => {
       return result.sudo
         ? "dialog-password-symbolic"
         : "utilities-terminal-symbolic";
+    case "calc":
+      return "accessories-calculator-symbolic";
   }
 };
 
@@ -349,6 +351,8 @@ const resultTitle = (result: SearchResult): string => {
       return result.path.split("/").pop() ?? result.path;
     case "command":
       return `${result.sudo ? "#" : "$"} ${result.cmd}`;
+    case "calc":
+      return result.result;
   }
 };
 
@@ -360,6 +364,8 @@ const resultSubtitle = (result: SearchResult): string | false => {
       return formatPath(result.path);
     case "command":
       return result.sudo ? "Run as root in a terminal" : "Run in a terminal";
+    case "calc":
+      return `${result.expression} -- click to copy`;
   }
 };
 

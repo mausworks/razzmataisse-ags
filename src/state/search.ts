@@ -1,6 +1,6 @@
 import config from "@config";
 import { createState } from "ags";
-import { execAsync } from "ags/process";
+import { execAsync, subprocess } from "ags/process";
 import AstalApps from "gi://AstalApps?version=0.1";
 import GLib from "gi://GLib?version=2.0";
 
@@ -60,7 +60,8 @@ const recordLaunch = (id: string) => {
 export type SearchResult =
   | { type: "app"; id: string; app: AstalApps.Application }
   | { type: "file"; id: string; path: string; matchKind: "name" | "content" }
-  | { type: "command"; id: string; cmd: string; sudo: boolean };
+  | { type: "command"; id: string; cmd: string; sudo: boolean }
+  | { type: "calc"; id: string; expression: string; result: string };
 
 const TOP_N = 10;
 
@@ -164,8 +165,57 @@ const parseCommand = (query: string): SearchResult | null => {
   return cmd ? { type: "command", id: `cmd:${cmd}`, cmd, sudo } : null;
 };
 
+/**
+ * A deliberately narrow allowlist -- digits, the basic arithmetic
+ * operators, parens, decimals, and whitespace -- rather than trying to
+ * recognize `bc`'s full syntax (variables, functions like `sqrt(...)`,
+ * ...). Keeps plain searches (app names, filenames) from ever reaching
+ * `bc` at all, which matters more than covering everything `bc` accepts.
+ */
+const MATH_EXPRESSION = /^[\d\s+\-*/%^().]+$/;
+
+const looksLikeMath = (query: string): boolean =>
+  /\d/.test(query) && /[+\-*/%^]/.test(query) && MATH_EXPRESSION.test(query);
+
+/**
+ * Pipes `expression` through `bc -l` and resolves its output, or `null` if
+ * `bc` produced nothing usable (a parse error, divide-by-zero, etc. go to
+ * stderr, not stdout). `bc` is interactive -- it keeps reading from stdin
+ * until told to stop -- so the expression is followed by `quit` rather
+ * than closing stdin, which `Process` has no way to do from here anyway.
+ *
+ * The two `write()` calls must be chained, not fired together: `bc`'s
+ * stdin is a single `GDataOutputStream`, and a second `write_bytes_async`
+ * issued before the first's callback has fired rejects outright instead
+ * of queuing.
+ */
+const evaluateMath = (expression: string): Promise<string | null> =>
+  new Promise((resolve) => {
+    let output = "";
+    let failed = false;
+
+    const proc = subprocess(
+      ["bc", "-l", "-q"],
+      (stdout) => {
+        output += (output ? "\n" : "") + stdout;
+      },
+      () => {
+        failed = true;
+      },
+    );
+
+    proc.connect("exit", () => {
+      resolve(!failed && output.trim() ? output.trim() : null);
+    });
+
+    proc
+      .write(`${expression}\n`)
+      .then(() => proc.write("quit\n"))
+      .catch(() => resolve(null));
+  });
+
 export const runResult = (result: SearchResult) => {
-  recordLaunch(result.id);
+  if (result.type !== "calc") recordLaunch(result.id);
 
   switch (result.type) {
     case "app":
@@ -186,6 +236,11 @@ export const runResult = (result: SearchResult) => {
       ]).catch((err) => console.error(`failed to run ${shellCmd}:`, err));
       break;
     }
+    case "calc":
+      execAsync(["wl-copy", result.result]).catch((err) =>
+        console.error(`failed to copy ${result.result}:`, err),
+      );
+      break;
   }
 };
 
@@ -213,6 +268,19 @@ export const createLauncherModel = () => {
     setResults(searchApps(text));
 
     const token = ++searchToken;
+
+    if (looksLikeMath(text)) {
+      evaluateMath(text)
+        .then((result) => {
+          if (token !== searchToken || result === null) return;
+          setResults((current) => [
+            { type: "calc", id: `calc:${text}`, expression: text, result },
+            ...current,
+          ]);
+        })
+        .catch((err) => console.error("math evaluation failed:", err));
+    }
+
     debounceTimer = setTimeout(() => {
       searchFiles(text)
         .then((fileResults) => {
