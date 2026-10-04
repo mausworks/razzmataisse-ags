@@ -39,7 +39,7 @@ export default function Bar({ monitor }: BarProps) {
       exclusivity={BAR_EXCLUSIVITY}
       anchor={TOP | LEFT | RIGHT}
       application={app}
-      $={withLayerBlur("bar")}
+      $={withLayerBlur()}
     >
       <centerbox class={containerClass}>
         <box $type="start" spacing={8}>

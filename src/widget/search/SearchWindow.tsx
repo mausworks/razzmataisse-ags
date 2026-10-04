@@ -113,7 +113,7 @@ export default function SearchWindow({ monitor }: SearchWindowProps) {
           entry?.grab_focus();
         }
       }}
-      $={withLayerBlur("search", (self) => {
+      $={withLayerBlur((self) => {
         win = self;
         const keys = new Gtk.EventControllerKey();
         keys.connect("key-pressed", (_self, keyval) => {

@@ -1,5 +1,5 @@
 import Lua from "@lib/lua";
-import type { Gtk } from "ags/gtk4";
+import type { Astal } from "ags/gtk4";
 import AstalHyprland from "gi://AstalHyprland";
 
 const Hyprland = AstalHyprland.get_default()!;
@@ -59,22 +59,22 @@ const blurredNamespaces = new Set<string>();
  * once per real widget, not once per time the enclosing component
  * function happens to run), and guarded by `blurredNamespaces` on top of
  * that regardless, in case something ever makes those not one-to-one
- * (e.g. the same namespace reused across monitors).
+ * (e.g. the same namespace reused across monitors). Reads the namespace
+ * off `self` (already set by the time `$` fires, since it's filled from
+ * the `<window namespace="...">` prop) rather than taking it as a second
+ * source of truth that could drift from what the window actually has.
  *
  * @example
  * ```tsx
- * <window namespace="bar" $={withLayerBlur("bar")}>
+ * <window namespace="bar" $={withLayerBlur()}>
  * // or composed with the window's own ref logic:
- * <window namespace="search" $={withLayerBlur("search", (self) => { ... })}>
+ * <window namespace="search" $={withLayerBlur((self) => { ... })}>
  * ```
  */
 export const withLayerBlur =
-  <W extends Gtk.Widget>(
-    namespace: string,
-    ref?: (self: W) => void,
-    ignoreAlpha?: number,
-  ) =>
+  <W extends Astal.Window>(ref?: (self: W) => void, ignoreAlpha?: number) =>
   (self: W) => {
+    const { namespace } = self;
     if (!blurredNamespaces.has(namespace)) {
       blurredNamespaces.add(namespace);
       enableLayerBlur(namespace, ignoreAlpha);
