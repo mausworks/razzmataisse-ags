@@ -48,11 +48,6 @@ const PLACEHOLDER: Record<SearchMode, string> = {
 export default function SearchWindow({ monitor }: SearchWindowProps) {
   const { query, results, setText, reset } = createSearchModel();
   const isActive = query.as((text) => text.length > 0);
-  // `max-width-chars` isn't just a natural-size hint -- GTK's box layout
-  // treats it as a real cap on how much of the available (hexpand) width a
-  // label is allowed to claim, so it has to track the panel's own width or
-  // text ends up stuck at the narrower budget even once there's more room.
-  const maxWidthChars = isActive.as((active) => (active ? 46 : 32));
 
   // The "$"/"#" prefix is never shown in the entry itself once it's
   // switched the icon over -- that'd be showing the same thing twice. So
@@ -86,11 +81,19 @@ export default function SearchWindow({ monitor }: SearchWindowProps) {
   // natural size automatically -- but only grows; once allocated at some
   // size it doesn't shrink back down on its own when that content gets
   // smaller, leaving dead space below a short result list. Resetting the
-  // default size back to "natural" on every result-count change forces a
-  // fresh measurement instead of treating the largest-ever size as a floor.
+  // default size on every result-count change forces a fresh measurement
+  // instead of treating the largest-ever size as a floor.
+  //
+  // Height is left as "natural" (-1), but width is pinned explicitly rather
+  // than also reset to -1: `panelClass`'s `widthRequest` is only a GTK
+  // *minimum*, not a cap, so a long result label's natural (un-ellipsized)
+  // width can still grow the window past it -- pinning width here is what
+  // actually makes 360/460 a hard size, forcing labels to ellipsize against
+  // it instead of growing the window around themselves.
   createEffect(() => {
+    const width = isActive() ? PANEL_WIDTH_ACTIVE : PANEL_WIDTH_DOCKED;
     results();
-    win?.set_default_size(-1, -1);
+    win?.set_default_size(width, -1);
   });
 
   const runSelected = () => {
@@ -223,7 +226,6 @@ export default function SearchWindow({ monitor }: SearchWindowProps) {
               <ResultRow
                 result={result}
                 selected={createComputed(() => index() === selectedIndex())}
-                maxWidthChars={maxWidthChars}
                 onRun={() => {
                   runResult(result);
                   app.get_window("search")!.visible = false;
@@ -240,11 +242,10 @@ export default function SearchWindow({ monitor }: SearchWindowProps) {
 type ResultRowProps = {
   result: SearchResult;
   selected: Accessor<boolean>;
-  maxWidthChars: Accessor<number>;
   onRun: () => void;
 };
 
-function ResultRow({ result, selected, maxWidthChars, onRun }: ResultRowProps) {
+function ResultRow({ result, selected, onRun }: ResultRowProps) {
   const subtitle = resultSubtitle(result);
 
   return (
@@ -261,7 +262,6 @@ function ResultRow({ result, selected, maxWidthChars, onRun }: ResultRowProps) {
             label={resultTitle(result)}
             halign={Gtk.Align.START}
             ellipsize={3}
-            maxWidthChars={maxWidthChars}
             hexpand
           />
           {subtitle && (
@@ -269,7 +269,6 @@ function ResultRow({ result, selected, maxWidthChars, onRun }: ResultRowProps) {
               label={subtitle}
               halign={Gtk.Align.START}
               ellipsize={3}
-              maxWidthChars={maxWidthChars}
               hexpand
               class={subtitleClass}
             />
@@ -288,29 +287,47 @@ const prettifyPath = (path: string): string =>
       ? `~${path.slice(HOME.length)}`
       : path;
 
-const COMPACT_HEAD_SEGMENTS = 2;
-const COMPACT_TAIL_SEGMENTS = 2;
+const COMPACT_MAX_LENGTH = 48;
 
 /**
  * `~/really/long/path/to/some/deeply/nested/file.rs` ->
- * `~/really/…/nested/file.rs` -- keeps the root (so you still know roughly
- * where you are) and the tail (so the filename, the part you actually
- * care about, stays visible), eliding the middle instead. Run on an
- * already-`prettifyPath`'d string, and only kicks in once there are more
- * segments than it would actually elide anything to compact.
+ * `~/really/…/nested/file.rs` -- keeps the filename (the part you actually
+ * care about) whole and grows a head from the root for as many segments as
+ * still fit, eliding whatever's left in the middle. Driven by total string
+ * length rather than segment count -- a path with just two segments can
+ * still be too long to show in full if those segments' names are long
+ * (e.g. `/<some-really-long-directory-name>/file.lol`), while a path with
+ * many short segments might not need compacting at all. Run on an
+ * already-`prettifyPath`'d string.
  */
 const compactPath = (path: string): string => {
+  if (path.length <= COMPACT_MAX_LENGTH) return path;
+
   const isAbsolute = path.startsWith("/");
   const segments = path.split("/").filter(Boolean);
+  if (segments.length <= 1) return path;
 
-  if (segments.length <= COMPACT_HEAD_SEGMENTS + COMPACT_TAIL_SEGMENTS) {
-    return path;
+  const prefix = isAbsolute ? "/" : "";
+  const tail = segments[segments.length - 1]!;
+
+  let head = segments[0]!;
+  let i = 1;
+  // "~" alone conveys nothing -- it's just "somewhere under home" -- so
+  // when the path starts there, the first *real* directory under it is
+  // kept unconditionally too, same as an absolute path's very first
+  // segment is below, regardless of how long that name is.
+  if (head === "~" && segments.length > 1) {
+    head = `${head}/${segments[1]}`;
+    i = 2;
+  }
+  for (; i < segments.length - 1; i++) {
+    const candidate = `${head}/${segments[i]}`;
+    if (`${prefix}${candidate}/…/${tail}`.length > COMPACT_MAX_LENGTH) break;
+    head = candidate;
   }
 
-  const head = segments.slice(0, COMPACT_HEAD_SEGMENTS).join("/");
-  const tail = segments.slice(-COMPACT_TAIL_SEGMENTS).join("/");
-
-  return `${isAbsolute ? "/" : ""}${head}/…/${tail}`;
+  const compacted = `${prefix}${head}/…/${tail}`;
+  return compacted.length < path.length ? compacted : path;
 };
 
 const formatPath = (path: string) => compactPath(prettifyPath(path));

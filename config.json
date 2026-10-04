@@ -1,6 +1,15 @@
 {
   "search": {
     "grepCommand": "rg",
+    "ignoredDesktopEntries": [
+      "*cmake*",
+      "*ccmake*",
+      "*cpack*",
+      "*ctest*",
+      "*avahi*",
+      "*bssh*",
+      "*bvnc*"
+    ],
     "ignoreGlobs": [
       "!.git",
       "!.cache",

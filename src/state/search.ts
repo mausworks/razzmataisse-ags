@@ -4,7 +4,21 @@ import { execAsync } from "ags/process";
 import AstalApps from "gi://AstalApps?version=0.1";
 import GLib from "gi://GLib?version=2.0";
 
-const { grepCommand, ignoreGlobs } = config.search;
+const { grepCommand, ignoreGlobs, ignoredDesktopEntries } = config.search;
+
+/** `*cmake*` -> case-insensitive "contains cmake", not a full glob dialect. */
+const globToRegExp = (glob: string): RegExp =>
+  new RegExp(
+    `^${glob.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*")}$`,
+    "i",
+  );
+
+const ignoredEntryPatterns = ignoredDesktopEntries.map(globToRegExp);
+
+const isIgnoredApp = (app: AstalApps.Application): boolean =>
+  ignoredEntryPatterns.some(
+    (pattern) => pattern.test(app.entry) || pattern.test(app.name),
+  );
 
 const Apps = new AstalApps.Apps();
 
@@ -54,12 +68,14 @@ const byFrequency = (left: SearchResult, right: SearchResult) =>
 
 const topResults = (): SearchResult[] =>
   Apps.get_list()
+    .filter((app) => !isIgnoredApp(app))
     .map((app): SearchResult => ({ type: "app", id: app.entry, app }))
     .sort(byFrequency)
     .slice(0, TOP_N);
 
 const searchApps = (query: string): SearchResult[] =>
   Apps.fuzzy_query(query)
+    .filter((app) => !isIgnoredApp(app))
     .slice(0, TOP_N)
     .map((app) => ({ type: "app", id: app.entry, app }) as const);
 
