@@ -42,6 +42,13 @@ itself. Both are validated against JSON schemas in [schemas/](schemas/)
 
 - [Hyprland](https://hyprland.org)
 - [AGS](https://aylur.github.io/ags-docs/) (with GTK4/Astal)
+- Astal's GTK4 shell library, plus these Astal libraries specifically:
+  AstalApps, AstalBluetooth, AstalHyprland, AstalNetwork, AstalWp. On
+  Arch's 'aylurs-gtk-shell' package these all come bundled together, but
+  distros that package each Astal library separately (NixOS, notably)
+  need every one of these listed explicitly, or you'll hit a runtime
+  "Typelib file for namespace '...' (any version) not found" error the
+  moment a widget that needs it renders.
 - [Bun](https://bun.sh)
 - [ripgrep](https://github.com/BurntSushi/ripgrep) ('rg') — used for the
   launcher's file search; configurable via 'config.json'
@@ -92,6 +99,7 @@ Other scripts:
 bun run lint         # eslint
 bun run format       # prettier --write
 bun run test         # bun test
+bun run typecheck    # tsc, scoped to this project's own src/ and scripts/
 bun run gtk:typegen  # regenerate GTK/Astal GI type declarations
 ```
 

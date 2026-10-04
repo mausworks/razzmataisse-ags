@@ -19,6 +19,7 @@
     "test": "bun test",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "gtk:typegen": "./scripts/gtk-typegen.sh"
+    "gtk:typegen": "./scripts/gtk-typegen.sh",
+    "typecheck": "./scripts/typecheck.sh"
   }
 }

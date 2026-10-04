@@ -140,18 +140,7 @@ echo "[install] linting..."
 bun run lint
 
 echo "[install] type-checking..."
-# `ags`/`gnim`'s own symlinked-in runtime and @girs's generated GObject
-# bindings aren't code this project owns, and reliably produce noise tsc
-# can't be configured away from entirely (they're reached through real
-# imports, not just swept in by a broad "include", so skipLibCheck alone
-# doesn't cover the non-.d.ts ones) -- a type error only means something
-# here if it points at this project's own src/ or scripts/ files.
-tsc_output=$(bunx tsc --noEmit 2>&1) || true
-if echo "$tsc_output" | grep -qE '^(src|scripts)/'; then
-  echo "$tsc_output"
-  echo "[install] type errors found in this project's own code" >&2
-  exit 1
-fi
+bun run typecheck
 
 cat <<EOF
 
