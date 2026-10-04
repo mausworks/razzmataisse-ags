@@ -1,4 +1,5 @@
 {
+  "$schema": "./schemas/config.schema.json",
   "search": {
     "grepCommand": "rg",
     "ignoredDesktopEntries": [

@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/mausworks/razzmataisse-ags/schemas/config.schema.json",
+  "title": "razzmataisse-ags config",
+  "description": "Non-visual settings for the shell, bridged into src/ as `@config`.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["search"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Points editors at this schema file for autocomplete/validation."
+    },
+    "search": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["grepCommand", "ignoredDesktopEntries", "ignoreGlobs"],
+      "properties": {
+        "grepCommand": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The ripgrep-compatible binary used for the search panel's file search (name on $PATH, or an absolute path)."
+        },
+        "ignoredDesktopEntries": {
+          "type": "array",
+          "description": "Case-insensitive glob patterns (`*` wildcard only) matched against both a .desktop file's id and its display name -- matching apps are hidden from search entirely.",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "ignoreGlobs": {
+          "type": "array",
+          "description": "ripgrep --iglob patterns excluded from the file search under $HOME. A leading \"!\" excludes; bare names (no slash) match at any depth.",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

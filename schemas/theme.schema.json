@@ -1,0 +1,90 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/mausworks/razzmataisse-ags/schemas/theme.schema.json",
+  "title": "razzmataisse-ags theme",
+  "description": "Visual settings (colors, sizing, transitions) for the shell, bridged into src/ as `@theme`.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["bar"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Points editors at this schema file for autocomplete/validation."
+    },
+    "bar": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["transition", "palette", "workspaceIndicator"],
+      "properties": {
+        "transition": {
+          "type": "object",
+          "description": "The bar window's own show/hide transition.",
+          "additionalProperties": false,
+          "required": ["in", "out"],
+          "properties": {
+            "in": { "$ref": "#/definitions/transition" },
+            "out": { "$ref": "#/definitions/transition" }
+          }
+        },
+        "palette": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "background",
+            "activeBackground",
+            "text",
+            "accent",
+            "accentText",
+            "success",
+            "danger"
+          ],
+          "properties": {
+            "background": {
+              "$ref": "#/definitions/color",
+              "description": "The bar's own (usually translucent) background."
+            },
+            "activeBackground": {
+              "$ref": "#/definitions/color",
+              "description": "Background for popovers and other \"active\" surfaces (e.g. the search panel)."
+            },
+            "text": { "$ref": "#/definitions/color" },
+            "accent": { "$ref": "#/definitions/color" },
+            "accentText": { "$ref": "#/definitions/color" },
+            "success": { "$ref": "#/definitions/color" },
+            "danger": { "$ref": "#/definitions/color" }
+          }
+        },
+        "workspaceIndicator": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["transition", "size", "spacing"],
+          "properties": {
+            "transition": { "$ref": "#/definitions/transition" },
+            "size": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "Diameter, in pixels, of a single workspace orb."
+            },
+            "spacing": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Gap, in pixels, between workspace orbs."
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "color": {
+      "type": "string",
+      "pattern": "^#([0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$",
+      "description": "A hex color, optionally with an alpha channel (#RGB, #RGBA, #RRGGBB, #RRGGBBAA)."
+    },
+    "transition": {
+      "type": "string",
+      "pattern": "^\\d+m?s( (linear|ease|ease-in|ease-out|ease-in-out))?( \\d+m?s)?$",
+      "description": "GTK CSS transition timing: \"<duration> [easing] [delay]\", e.g. \"300ms ease-out\"."
+    }
+  }
+}
