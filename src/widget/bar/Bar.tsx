@@ -1,5 +1,5 @@
 import { defineStyle } from "@lib/css";
-import { enableLayerBlur } from "@lib/hyprland";
+import { withLayerBlur } from "@lib/hyprland";
 import theme from "@theme";
 import { Astal, Gdk } from "ags/gtk4";
 import app from "ags/gtk4/app";
@@ -29,8 +29,6 @@ export type BarProps = {
 };
 
 export default function Bar({ monitor }: BarProps) {
-  enableLayerBlur("bar");
-
   return (
     <window
       visible
@@ -41,6 +39,7 @@ export default function Bar({ monitor }: BarProps) {
       exclusivity={BAR_EXCLUSIVITY}
       anchor={TOP | LEFT | RIGHT}
       application={app}
+      $={withLayerBlur("bar")}
     >
       <centerbox class={containerClass}>
         <box $type="start" spacing={8}>

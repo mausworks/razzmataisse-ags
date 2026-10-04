@@ -1,5 +1,5 @@
 import { alpha, defineStyle } from "@lib/css";
-import { enableLayerBlur } from "@lib/hyprland";
+import { withLayerBlur } from "@lib/hyprland";
 import { createSearchModel, runResult, type SearchResult } from "@state/search";
 import theme from "@theme";
 import { Accessor, createComputed, createEffect, createState, For } from "ags";
@@ -40,8 +40,6 @@ const PLACEHOLDER: Record<SearchMode, string> = {
 };
 
 export default function SearchWindow({ monitor }: SearchWindowProps) {
-  enableLayerBlur("search");
-
   const { query, results, setText, reset } = createSearchModel();
   const isActive = query.as((text) => text.length > 0);
 
@@ -115,7 +113,7 @@ export default function SearchWindow({ monitor }: SearchWindowProps) {
           entry?.grab_focus();
         }
       }}
-      $={(self) => {
+      $={withLayerBlur("search", (self) => {
         win = self;
         const keys = new Gtk.EventControllerKey();
         keys.connect("key-pressed", (_self, keyval) => {
@@ -144,7 +142,7 @@ export default function SearchWindow({ monitor }: SearchWindowProps) {
           }
         });
         self.add_controller(keys);
-      }}
+      })}
     >
       <box
         class={panelClass}

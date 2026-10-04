@@ -1,4 +1,5 @@
 import Lua from "@lib/lua";
+import type { Gtk } from "ags/gtk4";
 import AstalHyprland from "gi://AstalHyprland";
 
 const Hyprland = AstalHyprland.get_default()!;
@@ -35,11 +36,12 @@ const evalHyprlandLua = (lua: string) => {
  * (as our panels are) -- without it, the blur fades out along with the
  * alpha instead of showing through it.
  *
- * Confirmed idempotent (re-registering the same `name` repeatedly is a
- * no-op, not an error), so safe to call unconditionally on every launch
- * rather than needing to track whether it's already been set up.
+ * Confirmed idempotent server-side (re-registering the same `name`
+ * repeatedly is a no-op, not an error) -- `withLayerBlur` below still
+ * guards against calling this redundantly, to skip the IPC round-trip
+ * rather than rely on that.
  */
-export const enableLayerBlur = (namespace: string, ignoreAlpha = 0.1) =>
+const enableLayerBlur = (namespace: string, ignoreAlpha = 0.1) =>
   evalHyprlandLua(
     `hl.layer_rule(${Lua.stringify({
       name: `blur-${namespace}`,
@@ -48,3 +50,34 @@ export const enableLayerBlur = (namespace: string, ignoreAlpha = 0.1) =>
       ignore_alpha: ignoreAlpha,
     })})`,
   );
+
+const blurredNamespaces = new Set<string>();
+
+/**
+ * Wraps a `<window>`'s own `$` ref callback so blur is registered exactly
+ * once -- tied to that window's actual GTK construction (its `$` fires
+ * once per real widget, not once per time the enclosing component
+ * function happens to run), and guarded by `blurredNamespaces` on top of
+ * that regardless, in case something ever makes those not one-to-one
+ * (e.g. the same namespace reused across monitors).
+ *
+ * @example
+ * ```tsx
+ * <window namespace="bar" $={withLayerBlur("bar")}>
+ * // or composed with the window's own ref logic:
+ * <window namespace="search" $={withLayerBlur("search", (self) => { ... })}>
+ * ```
+ */
+export const withLayerBlur =
+  <W extends Gtk.Widget>(
+    namespace: string,
+    ref?: (self: W) => void,
+    ignoreAlpha?: number,
+  ) =>
+  (self: W) => {
+    if (!blurredNamespaces.has(namespace)) {
+      blurredNamespaces.add(namespace);
+      enableLayerBlur(namespace, ignoreAlpha);
+    }
+    ref?.(self);
+  };
