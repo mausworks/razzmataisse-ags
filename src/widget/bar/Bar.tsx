@@ -1,4 +1,5 @@
 import { defineStyle } from "@lib/css";
+import { enableLayerBlur } from "@lib/hyprland";
 import theme from "@theme";
 import { Astal, Gdk } from "ags/gtk4";
 import app from "ags/gtk4/app";
@@ -28,6 +29,8 @@ export type BarProps = {
 };
 
 export default function Bar({ monitor }: BarProps) {
+  enableLayerBlur("bar");
+
   return (
     <window
       visible

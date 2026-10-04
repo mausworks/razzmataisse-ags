@@ -1,4 +1,5 @@
 import { alpha, defineStyle } from "@lib/css";
+import { enableLayerBlur } from "@lib/hyprland";
 import { createSearchModel, runResult, type SearchResult } from "@state/search";
 import theme from "@theme";
 import { Accessor, createComputed, createEffect, createState, For } from "ags";
@@ -39,6 +40,8 @@ const PLACEHOLDER: Record<SearchMode, string> = {
 };
 
 export default function SearchWindow({ monitor }: SearchWindowProps) {
+  enableLayerBlur("search");
+
   const { query, results, setText, reset } = createSearchModel();
   const isActive = query.as((text) => text.length > 0);
 
