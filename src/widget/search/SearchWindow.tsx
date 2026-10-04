@@ -10,6 +10,7 @@ import theme from "@theme";
 import { Accessor, createComputed, createEffect, createState, For } from "ags";
 import { Astal, Gdk, Gtk } from "ags/gtk4";
 import app from "ags/gtk4/app";
+import Gio from "gi://Gio?version=2.0";
 
 const { palette } = theme.bar;
 
@@ -247,6 +248,7 @@ type ResultRowProps = {
 
 function ResultRow({ result, selected, onRun }: ResultRowProps) {
   const subtitle = resultSubtitle(result);
+  const icon = resultIcon(result);
 
   return (
     <button
@@ -256,7 +258,11 @@ function ResultRow({ result, selected, onRun }: ResultRowProps) {
       halign={Gtk.Align.FILL}
     >
       <box spacing={8} hexpand>
-        <image iconName={resultIcon(result)} />
+        {typeof icon === "string" ? (
+          <image iconName={icon} />
+        ) : (
+          <image gicon={icon} />
+        )}
         <box orientation={Gtk.Orientation.VERTICAL} hexpand>
           <label
             label={resultTitle(result)}
@@ -332,14 +338,46 @@ const compactPath = (path: string): string => {
 
 const formatPath = (path: string) => compactPath(prettifyPath(path));
 
-const resultIcon = (result: SearchResult): string => {
+// shared-mime-info gets a handful of extensions wrong, or doesn't know them
+// at all, for exactly the stack this project (and its search results) live
+// in: `.ts` collides with Qt Linguist translation files, `.tsx` with the
+// Tiled map editor's tileset format, and `.jsx` isn't registered at all. The
+// installed icon theme has no dedicated TypeScript icon either, so these
+// fall back to the JavaScript one -- the closest available match -- instead
+// of the generic blank-file icon `content_type_guess` would otherwise pick.
+const EXTENSION_ICON_OVERRIDES: Record<string, string[]> = {
+  ts: ["text-x-javascript", "text-x-generic"],
+  tsx: ["text-x-javascript", "text-x-generic"],
+  jsx: ["text-x-javascript", "text-x-generic"],
+};
+
+/**
+ * Resolves a file path to a themed icon via the desktop's own mime-type
+ * database rather than a hand-maintained extension table -- the installed
+ * icon theme (WhiteSur, here) ships icons for most common source languages
+ * (Rust, Python, Go, Ruby, C/C++, CSS, HTML, Markdown, …) under their mime
+ * type's name already, and `Gio.content_type_get_icon` returns a themed
+ * icon with its own specific -> generic fallback chain built in, so an
+ * unrecognized extension just degrades to the theme's generic file icon
+ * instead of nothing.
+ */
+const fileIcon = (path: string): Gio.Icon => {
+  const ext = path.split(".").pop()?.toLowerCase();
+  const override = ext && EXTENSION_ICON_OVERRIDES[ext];
+  if (override) return Gio.ThemedIcon.new_from_names(override);
+
+  const [contentType] = Gio.content_type_guess(path, null);
+  return Gio.content_type_get_icon(contentType);
+};
+
+const resultIcon = (result: SearchResult): string | Gio.Icon => {
   switch (result.type) {
     case "app":
       return result.app.iconName || "application-x-executable-symbolic";
     case "file":
       return result.matchKind === "content"
         ? "edit-find-symbolic"
-        : "text-x-generic-symbolic";
+        : fileIcon(result.path);
     case "command":
       return result.sudo
         ? "dialog-password-symbolic"
