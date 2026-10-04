@@ -119,6 +119,20 @@ link_ags_runtime() {
 echo "[install] linking the AGS/gnim runtime..."
 link_ags_runtime
 
+# @girs -- the GObject-Introspection-derived TypeScript bindings every
+# `gi://...` import in this project resolves against -- is in .gitignore
+# (it's large, machine-generated, and specific to whatever GI libraries and
+# versions are actually installed) and so never comes from `git clone` at
+# all. Generating it is slow (tens of seconds), so it's skipped once it
+# exists rather than regenerated on every run; delete the directory to
+# force a fresh one (e.g. after installing a library with new GI bindings).
+if [ ! -d "@girs" ] || [ -z "$(ls -A @girs 2>/dev/null)" ]; then
+  echo "[install] generating GI TypeScript bindings (this can take a while)..."
+  ags types -d "$(pwd)"
+else
+  echo "[install] @girs already present, skipping generation"
+fi
+
 echo "[install] generating GTK/Astal type declarations..."
 bun run gtk:typegen
 
