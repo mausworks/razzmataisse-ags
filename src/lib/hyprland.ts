@@ -26,28 +26,53 @@ const evalHyprlandLua = (lua: string) => {
   if (reply !== "ok") console.error(`hyprctl eval failed: ${lua}\n${reply}`);
 };
 
+export type LayerBlurOptions = {
+  /**
+   * Whenever the surface itself is fairly transparent (as our panels are),
+   * blur fades out along with the alpha instead of showing through it --
+   * this makes blur ignore alpha below the given threshold instead.
+   * Defaults to `0.1`.
+   */
+  ignoreAlpha?: number;
+  /**
+   * Blur against a fixed snapshot of the desktop background instead of
+   * whatever's actually layered behind the surface -- cheaper, but can
+   * look wrong wherever another blurred layer would otherwise show
+   * through. Defaults to `false`.
+   */
+  xray?: boolean;
+  /** Also blur this layer's own popups (e.g. tooltips). Defaults to `false`. */
+  blurPopups?: boolean;
+};
+
 /**
  * GTK4 has no `backdrop-filter`/blur-behind-the-element at all -- only a
  * `filter` that blurs a widget's own rendered content, not what's behind
  * it. Layer-shell surfaces (unlike regular translucent windows, which blur
  * automatically when `decoration.blur.enabled` is on) need an explicit
  * `layer_rule` to opt into Hyprland's compositor-side blur instead.
- * `ignoreAlpha` matters whenever the surface itself is fairly transparent
- * (as our panels are) -- without it, the blur fades out along with the
- * alpha instead of showing through it.
  *
  * Confirmed idempotent server-side (re-registering the same `name`
  * repeatedly is a no-op, not an error) -- `withLayerBlur` below still
  * guards against calling this redundantly, to skip the IPC round-trip
  * rather than rely on that.
  */
-const enableLayerBlur = (namespace: string, ignoreAlpha = 0.1) =>
+const enableLayerBlur = (
+  namespace: string,
+  {
+    ignoreAlpha = 0.1,
+    xray = false,
+    blurPopups = false,
+  }: LayerBlurOptions = {},
+) =>
   evalHyprlandLua(
     `hl.layer_rule(${Lua.stringify({
       name: `blur-${namespace}`,
       match: { namespace },
       blur: true,
       ignore_alpha: ignoreAlpha,
+      xray,
+      blur_popups: blurPopups,
     })})`,
   );
 
@@ -72,11 +97,14 @@ const blurredNamespaces = new Set<string>();
  * ```
  */
 export const withLayerBlur =
-  <W extends Astal.Window>(ref?: (self: W) => void, ignoreAlpha?: number) =>
+  <W extends Astal.Window>(
+    ref?: (self: W) => void,
+    options?: LayerBlurOptions,
+  ) =>
   (self: W) => {
     if (!blurredNamespaces.has(self.namespace)) {
       blurredNamespaces.add(self.namespace);
-      enableLayerBlur(self.namespace, ignoreAlpha);
+      enableLayerBlur(self.namespace, options);
     }
     ref?.(self);
   };
