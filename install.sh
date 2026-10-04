@@ -34,6 +34,12 @@ if ! in_repo_checkout; then
       git clone "$REPO_HTTPS" "$INSTALL_DIR"
   fi
 
+  # `exec` replaces the process image, not the working directory -- without
+  # this `cd`, the re-exec'd script below would still see `pwd` as wherever
+  # it was originally invoked from (e.g. `~`), fail `in_repo_checkout` again
+  # the exact same way, and loop here forever instead of ever progressing
+  # past this branch.
+  cd "$INSTALL_DIR"
   exec sh "$INSTALL_DIR/install.sh"
 fi
 
