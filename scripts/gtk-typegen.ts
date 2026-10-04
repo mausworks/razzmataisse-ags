@@ -136,7 +136,7 @@ app.start({
       .sort();
 
     writeUnionType(
-      "../lib/gtk/colors.d.ts",
+      "../src/lib/gtk/colors.d.ts",
       "ThemeColor",
       "/**\n" +
         " * GTK's named theme colors, usable as `@name` in GTK CSS (e.g.\n" +
@@ -148,7 +148,7 @@ app.start({
     );
 
     writeUnionType(
-      "../lib/gtk/icons.d.ts",
+      "../src/lib/gtk/icons.d.ts",
       "IconName",
       "/**\n" +
         " * Symbolic icon names available in the active icon theme, per\n" +
@@ -161,11 +161,15 @@ app.start({
     );
 
     GLib.file_set_contents(
-      "../lib/gtk/index.d.ts",
+      "../src/lib/gtk/index.d.ts",
       GENERATED_HEADER +
         "\n" +
         'export type { ThemeColor } from "./colors";\n' +
-        'export type { IconName } from "./icons";\n',
+        'export type { IconName } from "./icons";\n' +
+        // types.d.ts is hand-maintained, not generated -- re-exporting it
+        // here (rather than folding its content into this file) means this
+        // wholesale overwrite can't ever silently delete it.
+        'export type { NiceWidgetProps } from "./types";\n',
     );
 
     console.log(
