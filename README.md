@@ -65,10 +65,13 @@ Already have a checkout? Run the same script from inside it instead:
 
 It's idempotent either way — safe to rerun any time (e.g. after pulling).
 
-Once installed, wire it into Hyprland's config:
+Once installed, wire it into Hyprland's config (the new Lua config
+format — e.g. in 'autostart.lua'):
 
-```
-exec-once = ags run ~/.config/razzmataisse-ags/src/app.ts --gtk 4
+```lua
+hl.on("hyprland.start", function()
+  hl.exec_cmd("ags run ~/.config/razzmataisse-ags/src/app.ts --gtk 4")
+end)
 ```
 
 ## Development
@@ -167,5 +170,5 @@ entrypoint:
 ags run src/app.ts --gtk 4
 ```
 
-Typically wired into Hyprland's own config ('exec-once = ags run ...', see
+Typically wired into Hyprland's own config (see
 [Getting started](#getting-started)) rather than started by hand.

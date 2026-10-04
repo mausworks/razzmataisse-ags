@@ -107,6 +107,9 @@ Try it out:
   bun run dev                  # live-reloading dev session
   ags run src/app.ts --gtk 4   # run it once, the way Hyprland would
 
-Or wire it into Hyprland permanently, in your Hyprland config:
-  exec-once = ags run $(pwd)/src/app.ts --gtk 4
+Or wire it into Hyprland permanently (the new Lua config format --
+e.g. in autostart.lua):
+  hl.on("hyprland.start", function()
+    hl.exec_cmd("ags run $(pwd)/src/app.ts --gtk 4")
+  end)
 EOF
