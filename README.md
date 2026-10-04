@@ -5,11 +5,11 @@ A custom [Hyprland](https://hyprland.org) desktop shell built with
 and [gnim](https://github.com/aylur/gnim) — GTK4 widgets written in
 TypeScript/JSX, styled using CSS-in-JS from `@lib/css`.
 
-## Why
+This project emphasizes portability ergonomics and DX, 
+nothing assumes *your* home directory, *your* username, 
+or any other detail of your particular machine.
 
-Good ergonomics and DX, nothing assumes *your* home directory, *your*
-username, or any other detail of your particular machine, and getting it
-running should be the easy part.
+_Getting started is easy, and customizations are a breeze!_
 
 ## What's in it
 
@@ -36,7 +36,7 @@ into `src/` via `@theme`/`@config` since path aliases only cover `src/`
 itself. Both are validated against JSON schemas in [`schemas/`](schemas/)
 (referenced via `$schema`, for editor autocomplete and validation).
 
-## Requirements
+## Requirementso
 
 - [Hyprland](https://hyprland.org)
 - [AGS](https://aylur.github.io/ags-docs/) (with GTK4/Astal)
