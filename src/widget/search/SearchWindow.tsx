@@ -1,6 +1,11 @@
 import { alpha, defineStyle } from "@lib/css";
 import { withLayerBlur } from "@lib/hyprland";
-import { createSearchModel, runResult, type SearchResult } from "@state/search";
+import {
+  createSearchModel,
+  HOME,
+  runResult,
+  type SearchResult,
+} from "@state/search";
 import theme from "@theme";
 import { Accessor, createComputed, createEffect, createState, For } from "ags";
 import { Astal, Gdk, Gtk } from "ags/gtk4";
@@ -14,7 +19,8 @@ const DOCK_GAP = 12;
 // Matches the bar's own `containerClass` padding, so the docked panel lines
 // up under the search button instead of the window's left edge.
 const DOCK_MARGIN_LEFT = 12;
-const PANEL_WIDTH = 480;
+const PANEL_WIDTH_DOCKED = 360;
+const PANEL_WIDTH_ACTIVE = 460;
 
 export type SearchWindowProps = {
   monitor: Gdk.Monitor;
@@ -42,6 +48,11 @@ const PLACEHOLDER: Record<SearchMode, string> = {
 export default function SearchWindow({ monitor }: SearchWindowProps) {
   const { query, results, setText, reset } = createSearchModel();
   const isActive = query.as((text) => text.length > 0);
+  // `max-width-chars` isn't just a natural-size hint -- GTK's box layout
+  // treats it as a real cap on how much of the available (hexpand) width a
+  // label is allowed to claim, so it has to track the panel's own width or
+  // text ends up stuck at the narrower budget even once there's more room.
+  const maxWidthChars = isActive.as((active) => (active ? 46 : 32));
 
   // The "$"/"#" prefix is never shown in the entry itself once it's
   // switched the icon over -- that'd be showing the same thing twice. So
@@ -148,7 +159,9 @@ export default function SearchWindow({ monitor }: SearchWindowProps) {
         class={panelClass}
         orientation={Gtk.Orientation.VERTICAL}
         spacing={8}
-        widthRequest={PANEL_WIDTH}
+        widthRequest={isActive.as((active) =>
+          active ? PANEL_WIDTH_ACTIVE : PANEL_WIDTH_DOCKED,
+        )}
       >
         <box class={entryWrapperClass} spacing={8}>
           <box
@@ -210,6 +223,7 @@ export default function SearchWindow({ monitor }: SearchWindowProps) {
               <ResultRow
                 result={result}
                 selected={createComputed(() => index() === selectedIndex())}
+                maxWidthChars={maxWidthChars}
                 onRun={() => {
                   runResult(result);
                   app.get_window("search")!.visible = false;
@@ -226,30 +240,37 @@ export default function SearchWindow({ monitor }: SearchWindowProps) {
 type ResultRowProps = {
   result: SearchResult;
   selected: Accessor<boolean>;
+  maxWidthChars: Accessor<number>;
   onRun: () => void;
 };
 
-function ResultRow({ result, selected, onRun }: ResultRowProps) {
+function ResultRow({ result, selected, maxWidthChars, onRun }: ResultRowProps) {
   const subtitle = resultSubtitle(result);
 
   return (
     <button
       class={rowClass(selected.as((isSelected) => isSelected && "selected"))}
       onClicked={onRun}
+      hexpand
+      halign={Gtk.Align.FILL}
     >
-      <box spacing={8}>
+      <box spacing={8} hexpand>
         <image iconName={resultIcon(result)} />
         <box orientation={Gtk.Orientation.VERTICAL} hexpand>
           <label
             label={resultTitle(result)}
             halign={Gtk.Align.START}
             ellipsize={3}
+            maxWidthChars={maxWidthChars}
+            hexpand
           />
           {subtitle && (
             <label
               label={subtitle}
               halign={Gtk.Align.START}
               ellipsize={3}
+              maxWidthChars={maxWidthChars}
+              hexpand
               class={subtitleClass}
             />
           )}
@@ -258,6 +279,41 @@ function ResultRow({ result, selected, onRun }: ResultRowProps) {
     </button>
   );
 }
+
+/** `/home/maus/foo` -> `~/foo`. Only the user's own home, never hard-coded. */
+const prettifyPath = (path: string): string =>
+  path === HOME
+    ? "~"
+    : path.startsWith(`${HOME}/`)
+      ? `~${path.slice(HOME.length)}`
+      : path;
+
+const COMPACT_HEAD_SEGMENTS = 2;
+const COMPACT_TAIL_SEGMENTS = 2;
+
+/**
+ * `~/really/long/path/to/some/deeply/nested/file.rs` ->
+ * `~/really/…/nested/file.rs` -- keeps the root (so you still know roughly
+ * where you are) and the tail (so the filename, the part you actually
+ * care about, stays visible), eliding the middle instead. Run on an
+ * already-`prettifyPath`'d string, and only kicks in once there are more
+ * segments than it would actually elide anything to compact.
+ */
+const compactPath = (path: string): string => {
+  const isAbsolute = path.startsWith("/");
+  const segments = path.split("/").filter(Boolean);
+
+  if (segments.length <= COMPACT_HEAD_SEGMENTS + COMPACT_TAIL_SEGMENTS) {
+    return path;
+  }
+
+  const head = segments.slice(0, COMPACT_HEAD_SEGMENTS).join("/");
+  const tail = segments.slice(-COMPACT_TAIL_SEGMENTS).join("/");
+
+  return `${isAbsolute ? "/" : ""}${head}/…/${tail}`;
+};
+
+const formatPath = (path: string) => compactPath(prettifyPath(path));
 
 const resultIcon = (result: SearchResult): string => {
   switch (result.type) {
@@ -290,7 +346,7 @@ const resultSubtitle = (result: SearchResult): string | false => {
     case "app":
       return result.app.description || false;
     case "file":
-      return result.path;
+      return formatPath(result.path);
     case "command":
       return result.sudo ? "Run as root in a terminal" : "Run in a terminal";
   }

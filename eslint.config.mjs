@@ -23,7 +23,7 @@ export default defineConfig(
     plugins: { local: localRules, "simple-import-sort": simpleImportSort },
     rules: {
       "local/require-for-id": "error",
-      "local/require-definestyle-scope": "error",
+      "local/require-define-scope": "error",
       "local/require-transform-space-separator": "error",
       "local/require-valid-transform-units": "error",
       "local/prefer-transition-helper": "warn",
@@ -49,10 +49,10 @@ export default defineConfig(
     },
   },
   {
-    // The one legitimate exception: this file exists specifically to
-    // bridge into src/ from the project-root theme.json, which no alias
-    // reaches (aliases only cover paths under src/, per its baseUrl).
-    files: ["src/theme.ts"],
+    // The legitimate exceptions: these files exist specifically to bridge
+    // into src/ from the project-root theme.json/config.json, which no
+    // alias reaches (aliases only cover paths under src/, per its baseUrl).
+    files: ["src/theme.ts", "src/config.ts"],
     rules: { "no-restricted-imports": "off" },
   },
 );

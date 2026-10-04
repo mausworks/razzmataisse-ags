@@ -1,7 +1,10 @@
+import config from "@config";
 import { createState } from "ags";
 import { execAsync } from "ags/process";
 import AstalApps from "gi://AstalApps?version=0.1";
 import GLib from "gi://GLib?version=2.0";
+
+const { grepCommand, ignoreGlobs } = config.search;
 
 const Apps = new AstalApps.Apps();
 
@@ -60,46 +63,26 @@ const searchApps = (query: string): SearchResult[] =>
     .slice(0, TOP_N)
     .map((app) => ({ type: "app", id: app.entry, app }) as const);
 
-const HOME = GLib.get_home_dir();
-
-// Directories that are either huge, binary, or not meaningfully "yours" --
-// searching them wastes time and buries real results under e.g. toolchain
-// caches and browser extension bundles. Bare names (no slash) match
-// anywhere in the tree, not just at $HOME's top level.
-const IGNORE_GLOBS = [
-  "!.git",
-  "!.cache",
-  "!.local/share/Trash",
-  "!node_modules",
-  "!.npm",
-  "!.cargo",
-  "!.rustup",
-  "!.bun",
-  "!.vscode",
-  "!.models",
-  "!.ollama",
-  "!.docker",
-  "!.mozilla",
-  "!BraveSoftware",
-  "!chromium",
-  "!google-chrome",
-];
+export const HOME = GLib.get_home_dir();
 
 const MAX_FILE_RESULTS = 8;
 
 /**
- * Filenames and file contents under $HOME, via `rg` (not installed by
- * default on this system -- see the user-facing note in SearchWindow.tsx).
- * Both run in parallel; ripgrep exits non-zero on "no matches", which
- * `execAsync` treats as a rejection, so that's swallowed into an empty
- * result rather than surfaced as an error.
+ * Filenames and file contents under $HOME, via `config.search.grepCommand`
+ * (`rg` by default -- not installed on this system by default, see the
+ * user-facing note in SearchWindow.tsx). The flags below are ripgrep's --
+ * `grepCommand` only swaps which binary gets run, not the dialect, so it's
+ * really "point at a different/renamed ripgrep build" rather than "use any
+ * grep-like tool". Both run in parallel; ripgrep exits non-zero on "no
+ * matches", which `execAsync` treats as a rejection, so that's swallowed
+ * into an empty result rather than surfaced as an error.
  */
 const searchFiles = async (query: string): Promise<SearchResult[]> => {
-  const globArgs = IGNORE_GLOBS.flatMap((glob) => ["-g", glob]);
+  const globArgs = ignoreGlobs.flatMap((glob) => ["-g", glob]);
 
   const [names, contents] = await Promise.all([
     execAsync([
-      "rg",
+      grepCommand,
       "--files",
       "--hidden",
       "--iglob",
@@ -108,7 +91,7 @@ const searchFiles = async (query: string): Promise<SearchResult[]> => {
       HOME,
     ]).catch(() => ""),
     execAsync([
-      "rg",
+      grepCommand,
       "--hidden",
       "--files-with-matches",
       "--ignore-case",

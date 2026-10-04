@@ -1,0 +1,23 @@
+{
+  "search": {
+    "grepCommand": "rg",
+    "ignoreGlobs": [
+      "!.git",
+      "!.cache",
+      "!.local/share/Trash",
+      "!node_modules",
+      "!.npm",
+      "!.cargo",
+      "!.rustup",
+      "!.bun",
+      "!.vscode",
+      "!.models",
+      "!.ollama",
+      "!.docker",
+      "!.mozilla",
+      "!BraveSoftware",
+      "!chromium",
+      "!google-chrome"
+    ]
+  }
+}
