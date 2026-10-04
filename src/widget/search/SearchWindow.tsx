@@ -159,15 +159,12 @@ export default function SearchWindow({ monitor }: SearchWindowProps) {
               iconName="system-search-symbolic"
               visible={mode.as((current) => current === "search")}
             />
-            <label
-              label="$"
-              class={glyphClass}
-              visible={mode.as((current) => current === "dollar")}
-            />
-            <label
-              label="#"
-              class={glyphClass}
-              visible={mode.as((current) => current === "hash")}
+            <image
+              iconName="utilities-terminal-symbolic"
+              class={mode.as((current) =>
+                current === "hash" ? dangerIconClass : accentIconClass,
+              )}
+              visible={mode.as((current) => current !== "search")}
             />
           </box>
           <entry
@@ -331,11 +328,15 @@ const iconSlotClass = defineStyle({
   },
 })();
 
-const glyphClass = defineStyle({
+const accentIconClass = defineStyle({
   style: {
-    color: palette.text,
-    fontWeight: "bold",
-    fontSize: 14,
+    color: palette.accent,
+  },
+})();
+
+const dangerIconClass = defineStyle({
+  style: {
+    color: palette.danger,
   },
 })();
 
