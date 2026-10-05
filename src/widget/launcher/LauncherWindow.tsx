@@ -173,11 +173,6 @@ export default function LauncherWindow({ monitor }: LauncherWindowProps) {
               visible={mode.as((current) => current === "equals")}
             />
           </box>
-          <label
-            label="("
-            class={calcGlyphClass}
-            visible={mode.as((current) => current === "equals")}
-          />
           <entry
             class={entryFieldClass(
               mode.as((current) => current === "equals" && "calc"),
@@ -233,7 +228,6 @@ export default function LauncherWindow({ monitor }: LauncherWindowProps) {
               xalign={0}
               widthChars={CALC_RESULT_CHARS}
             />
-            <label label=")" class={calcGlyphClass} />
           </box>
         </box>
 
