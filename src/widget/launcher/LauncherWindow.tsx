@@ -36,16 +36,25 @@ export type LauncherWindowProps = {
  * animations.lua) is what makes that transition a slide instead of a jump;
  * not something verifiable headlessly -- check it looks right live.
  */
-type SearchMode = "search" | "dollar" | "hash";
+type SearchMode = "search" | "dollar" | "hash" | "equals";
 
 const PLACEHOLDER: Record<SearchMode, string> = {
-  search: "Search apps and files, or $cmd / #sudo cmd…",
+  search: "Search apps and files, $cmd / #sudo cmd, or =calc…",
   dollar: "Command to run…",
   hash: "Command to run as root…",
+  equals: "0",
 };
 
+// How many characters wide the expression/result readout holds steady at
+// in calculator mode, matching `(         0 = 0 )`'s own layout -- the "="
+// sign's position only ever depends on the (fixed-width) expression side,
+// never the result, so a result growing past this many digits is the only
+// thing that can still shift anything (the closing paren).
+const CALC_EXPRESSION_CHARS = 10;
+const CALC_RESULT_CHARS = 4;
+
 export default function LauncherWindow({ monitor }: LauncherWindowProps) {
-  const { query, results, setText, reset } = createLauncherModel();
+  const { query, results, calcResult, setText, reset } = createLauncherModel();
   const isActive = query.as((text) => text.length > 0);
 
   const [mode, setMode] = createState<SearchMode>("search");
@@ -154,12 +163,30 @@ export default function LauncherWindow({ monitor }: LauncherWindowProps) {
               class={mode.as((current) =>
                 current === "hash" ? dangerIconClass : accentIconClass,
               )}
-              visible={mode.as((current) => current !== "search")}
+              visible={mode.as(
+                (current) => current === "dollar" || current === "hash",
+              )}
+            />
+            <image
+              iconName="accessories-calculator-symbolic"
+              class={accentIconClass}
+              visible={mode.as((current) => current === "equals")}
             />
           </box>
+          <label
+            label="("
+            class={calcGlyphClass}
+            visible={mode.as((current) => current === "equals")}
+          />
           <entry
-            class={entryFieldClass}
-            hexpand
+            class={entryFieldClass(
+              mode.as((current) => current === "equals" && "calc"),
+            )}
+            hexpand={mode.as((current) => current !== "equals")}
+            xalign={mode.as((current) => (current === "equals" ? 1 : 0))}
+            widthChars={mode.as((current) =>
+              current === "equals" ? CALC_EXPRESSION_CHARS : -1,
+            )}
             placeholderText={mode.as((current) => PLACEHOLDER[current])}
             $={(self: Gtk.Entry) => (entry = self)}
             onNotifyText={(self) => {
@@ -168,11 +195,19 @@ export default function LauncherWindow({ monitor }: LauncherWindowProps) {
 
               if (
                 currentMode === "search" &&
-                (typed.startsWith("$") || typed.startsWith("#"))
+                (typed.startsWith("$") ||
+                  typed.startsWith("#") ||
+                  typed.startsWith("="))
               ) {
-                const prefix = typed[0] as "$" | "#";
+                const prefix = typed[0] as "$" | "#" | "=";
                 const rest = typed.slice(1);
-                setMode(prefix === "$" ? "dollar" : "hash");
+                setMode(
+                  prefix === "$"
+                    ? "dollar"
+                    : prefix === "#"
+                      ? "hash"
+                      : "equals",
+                );
                 self.set_text(rest);
                 setText(prefix + rest);
                 return;
@@ -183,11 +218,23 @@ export default function LauncherWindow({ monitor }: LauncherWindowProps) {
                   ? "$"
                   : currentMode === "hash"
                     ? "#"
-                    : "";
+                    : currentMode === "equals"
+                      ? "="
+                      : "";
               setText(prefix + typed);
             }}
             onActivate={runSelected}
           />
+          <box spacing={4} visible={mode.as((current) => current === "equals")}>
+            <label label="=" class={calcGlyphClass} />
+            <label
+              label={calcResult.as((result) => result ?? "0")}
+              class={calcResultClass}
+              xalign={0}
+              widthChars={CALC_RESULT_CHARS}
+            />
+            <label label=")" class={calcGlyphClass} />
+          </box>
         </box>
 
         <box orientation={Gtk.Orientation.VERTICAL} spacing={2}>
@@ -338,8 +385,6 @@ const resultIcon = (result: SearchResult): string | Gio.Icon => {
       return result.sudo
         ? "dialog-password-symbolic"
         : "utilities-terminal-symbolic";
-    case "calc":
-      return "accessories-calculator-symbolic";
   }
 };
 
@@ -351,8 +396,6 @@ const resultTitle = (result: SearchResult): string => {
       return result.path.split("/").pop() ?? result.path;
     case "command":
       return `${result.sudo ? "#" : "$"} ${result.cmd}`;
-    case "calc":
-      return result.result;
   }
 };
 
@@ -364,8 +407,6 @@ const resultSubtitle = (result: SearchResult): string | false => {
       return formatPath(result.path);
     case "command":
       return result.sudo ? "Run as root in a terminal" : "Run in a terminal";
-    case "calc":
-      return `${result.expression} -- click to copy`;
   }
 };
 
@@ -419,6 +460,28 @@ const entryFieldClass = defineStyle({
     border: "none",
     boxShadow: "none",
     padding: 0,
+    fontSize: 14,
+  },
+  variants: {
+    calc: {
+      fontFamily: "monospace",
+    },
+  },
+});
+
+const calcGlyphClass = defineStyle({
+  style: {
+    color: alpha(palette.text, 0.5),
+    fontFamily: "monospace",
+    fontSize: 14,
+  },
+})();
+
+const calcResultClass = defineStyle({
+  style: {
+    color: palette.text,
+    fontFamily: "monospace",
+    fontWeight: "bold",
     fontSize: 14,
   },
 })();

@@ -60,8 +60,7 @@ const recordLaunch = (id: string) => {
 export type SearchResult =
   | { type: "app"; id: string; app: AstalApps.Application }
   | { type: "file"; id: string; path: string; matchKind: "name" | "content" }
-  | { type: "command"; id: string; cmd: string; sudo: boolean }
-  | { type: "calc"; id: string; expression: string; result: string };
+  | { type: "command"; id: string; cmd: string; sudo: boolean };
 
 const TOP_N = 10;
 
@@ -166,18 +165,6 @@ const parseCommand = (query: string): SearchResult | null => {
 };
 
 /**
- * A deliberately narrow allowlist -- digits, the basic arithmetic
- * operators, parens, decimals, and whitespace -- rather than trying to
- * recognize `bc`'s full syntax (variables, functions like `sqrt(...)`,
- * ...). Keeps plain searches (app names, filenames) from ever reaching
- * `bc` at all, which matters more than covering everything `bc` accepts.
- */
-const MATH_EXPRESSION = /^[\d\s+\-*/%^().]+$/;
-
-const looksLikeMath = (query: string): boolean =>
-  /\d/.test(query) && /[+\-*/%^]/.test(query) && MATH_EXPRESSION.test(query);
-
-/**
  * Pipes `expression` through `bc -l` and resolves its output, or `null` if
  * `bc` produced nothing usable (a parse error, divide-by-zero, etc. go to
  * stderr, not stdout). `bc` is interactive -- it keeps reading from stdin
@@ -215,7 +202,7 @@ const evaluateMath = (expression: string): Promise<string | null> =>
   });
 
 export const runResult = (result: SearchResult) => {
-  if (result.type !== "calc") recordLaunch(result.id);
+  recordLaunch(result.id);
 
   switch (result.type) {
     case "app":
@@ -236,23 +223,38 @@ export const runResult = (result: SearchResult) => {
       ]).catch((err) => console.error(`failed to run ${shellCmd}:`, err));
       break;
     }
-    case "calc":
-      execAsync(["wl-copy", result.result]).catch((err) =>
-        console.error(`failed to copy ${result.result}:`, err),
-      );
-      break;
   }
 };
 
 export const createLauncherModel = () => {
   const [query, setQuery] = createState("");
   const [results, setResults] = createState<SearchResult[]>(topResults());
+  const [calcResult, setCalcResult] = createState<string | null>(null);
 
   let debounceTimer: ReturnType<typeof setTimeout> | undefined;
   let searchToken = 0;
 
   const search = (text: string) => {
     if (debounceTimer) clearTimeout(debounceTimer);
+
+    if (text.startsWith("=")) {
+      setResults([]);
+      const expression = text.slice(1).trim();
+      if (!expression) {
+        setCalcResult(null);
+        return;
+      }
+
+      const token = ++searchToken;
+      evaluateMath(expression)
+        .then((result) => {
+          if (token === searchToken) setCalcResult(result);
+        })
+        .catch((err) => console.error("math evaluation failed:", err));
+      return;
+    }
+
+    setCalcResult(null);
 
     if (text.startsWith("$") || text.startsWith("#")) {
       const command = parseCommand(text);
@@ -268,19 +270,6 @@ export const createLauncherModel = () => {
     setResults(searchApps(text));
 
     const token = ++searchToken;
-
-    if (looksLikeMath(text)) {
-      evaluateMath(text)
-        .then((result) => {
-          if (token !== searchToken || result === null) return;
-          setResults((current) => [
-            { type: "calc", id: `calc:${text}`, expression: text, result },
-            ...current,
-          ]);
-        })
-        .catch((err) => console.error("math evaluation failed:", err));
-    }
-
     debounceTimer = setTimeout(() => {
       searchFiles(text)
         .then((fileResults) => {
@@ -298,5 +287,5 @@ export const createLauncherModel = () => {
 
   const reset = () => setText("");
 
-  return { query, results, setText, reset };
+  return { query, results, calcResult, setText, reset };
 };
