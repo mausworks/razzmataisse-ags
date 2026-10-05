@@ -205,15 +205,9 @@ export default function LauncherWindow({ monitor }: LauncherWindowProps) {
                         ? "hash"
                         : "equals";
                   setMode(newMode);
-                  self.set_alignment(newMode === "equals" ? 1 : 0);
                   self.set_text(rest);
-                  // `set_text()` leaves the cursor at position 0 -- with
-                  // nothing typed yet that's invisible, but it means the
-                  // very first real keystroke starts from a cursor at the
-                  // *start*, and GTK's keep-the-cursor-visible scrolling
-                  // then anchors the view to the left from then on,
-                  // overriding `xalign` for the rest of the session.
                   self.set_position(-1);
+                  self.set_alignment(newMode === "equals" ? 1 : 0);
                   setText(prefix + rest);
                   return;
                 }
@@ -242,7 +236,6 @@ export default function LauncherWindow({ monitor }: LauncherWindowProps) {
               label={calcResult.as((result) => result ?? "0")}
               class={calcResultClass}
               xalign={0.5}
-              hexpand
             />
           </box>
         </box>
