@@ -149,94 +149,97 @@ export default function LauncherWindow({ monitor }: LauncherWindowProps) {
           active ? PANEL_WIDTH_ACTIVE : PANEL_WIDTH_DOCKED,
         )}
       >
-        <box class={entryWrapperClass} spacing={8}>
-          <box
-            class={iconSlotClass}
-            halign={Gtk.Align.CENTER}
-            valign={Gtk.Align.CENTER}
-          >
-            <image
-              iconName="go-next-symbolic"
-              visible={mode.as((current) => current === "search")}
-            />
-            <image
-              iconName="utilities-terminal-symbolic"
-              class={mode.as((current) =>
-                current === "hash" ? dangerIconClass : accentIconClass,
+        <box class={entryWrapperClass} hexpand>
+          <box hexpand={mode.as((current) => current === "equals")} />
+          <box spacing={8}>
+            <box
+              class={iconSlotClass}
+              halign={Gtk.Align.CENTER}
+              valign={Gtk.Align.CENTER}
+            >
+              <image
+                iconName="go-next-symbolic"
+                visible={mode.as((current) => current === "search")}
+              />
+              <image
+                iconName="utilities-terminal-symbolic"
+                class={mode.as((current) =>
+                  current === "hash" ? dangerIconClass : accentIconClass,
+                )}
+                visible={mode.as(
+                  (current) => current === "dollar" || current === "hash",
+                )}
+              />
+              <image
+                iconName="accessories-calculator-symbolic"
+                class={accentIconClass}
+                visible={mode.as((current) => current === "equals")}
+              />
+            </box>
+            <box
+              widthRequest={mode.as((current) =>
+                current === "equals" ? CALC_EXPRESSION_WIDTH : -1,
               )}
-              visible={mode.as(
-                (current) => current === "dollar" || current === "hash",
-              )}
-            />
-            <image
-              iconName="accessories-calculator-symbolic"
-              class={accentIconClass}
+            >
+              <entry
+                class={entryFieldClass(
+                  mode.as((current) => current === "equals" && "calc"),
+                )}
+                hexpand={mode.as((current) => current !== "equals")}
+                placeholderText={mode.as((current) => PLACEHOLDER[current])}
+                $={(self: Gtk.Entry) => (entry = self)}
+                onNotifyText={(self) => {
+                  const typed = self.text;
+                  const currentMode = mode.peek();
+
+                  if (
+                    currentMode === "search" &&
+                    (typed.startsWith("$") ||
+                      typed.startsWith("#") ||
+                      typed.startsWith("="))
+                  ) {
+                    const prefix = typed[0] as "$" | "#" | "=";
+                    const rest = typed.slice(1);
+                    const newMode =
+                      prefix === "$"
+                        ? "dollar"
+                        : prefix === "#"
+                          ? "hash"
+                          : "equals";
+                    setMode(newMode);
+                    self.set_text(rest);
+                    self.set_position(-1);
+                    self.set_alignment(newMode === "equals" ? 1 : 0);
+                    setText(prefix + rest);
+                    return;
+                  }
+
+                  const prefix =
+                    currentMode === "dollar"
+                      ? "$"
+                      : currentMode === "hash"
+                        ? "#"
+                        : currentMode === "equals"
+                          ? "="
+                          : "";
+                  setText(prefix + typed);
+                }}
+                onActivate={runSelected}
+              />
+            </box>
+            <box visible={mode.as((current) => current === "equals")}>
+              <label label="=" class={calcGlyphClass} />
+            </box>
+            <box
+              class={calcResultBoxClass}
               visible={mode.as((current) => current === "equals")}
-            />
-          </box>
-          <box
-            widthRequest={mode.as((current) =>
-              current === "equals" ? CALC_EXPRESSION_WIDTH : -1,
-            )}
-          >
-            <entry
-              class={entryFieldClass(
-                mode.as((current) => current === "equals" && "calc"),
-              )}
-              hexpand={mode.as((current) => current !== "equals")}
-              placeholderText={mode.as((current) => PLACEHOLDER[current])}
-              $={(self: Gtk.Entry) => (entry = self)}
-              onNotifyText={(self) => {
-                const typed = self.text;
-                const currentMode = mode.peek();
-
-                if (
-                  currentMode === "search" &&
-                  (typed.startsWith("$") ||
-                    typed.startsWith("#") ||
-                    typed.startsWith("="))
-                ) {
-                  const prefix = typed[0] as "$" | "#" | "=";
-                  const rest = typed.slice(1);
-                  const newMode =
-                    prefix === "$"
-                      ? "dollar"
-                      : prefix === "#"
-                        ? "hash"
-                        : "equals";
-                  setMode(newMode);
-                  self.set_text(rest);
-                  self.set_position(-1);
-                  self.set_alignment(newMode === "equals" ? 1 : 0);
-                  setText(prefix + rest);
-                  return;
-                }
-
-                const prefix =
-                  currentMode === "dollar"
-                    ? "$"
-                    : currentMode === "hash"
-                      ? "#"
-                      : currentMode === "equals"
-                        ? "="
-                        : "";
-                setText(prefix + typed);
-              }}
-              onActivate={runSelected}
-            />
-          </box>
-          <box visible={mode.as((current) => current === "equals")}>
-            <label label="=" class={calcGlyphClass} />
-          </box>
-          <box
-            class={calcResultBoxClass}
-            visible={mode.as((current) => current === "equals")}
-          >
-            <label
-              label={calcResult.as((result) => result ?? "0")}
-              class={calcResultClass}
-              xalign={0.5}
-            />
+            >
+              <label
+                label={calcResult.as((result) => result ?? "0")}
+                class={calcResultClass}
+                xalign={0.5}
+              />
+            </box>
           </box>
         </box>
 
