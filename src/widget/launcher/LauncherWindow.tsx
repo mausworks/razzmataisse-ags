@@ -343,7 +343,7 @@ const resultTitle = (result: LauncherResult): string => {
     case "file":
       return result.path.split("/").pop() ?? result.path;
     case "exec":
-      return `$ ${result.command}`;
+      return `! ${result.command}`;
     case "calc":
       return result.value;
   }
