@@ -5,7 +5,9 @@
   "description": "Visual settings (colors, sizing, transitions) for the shell, bridged into src/ as `@theme`.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["bar"],
+  "required": [
+    "bar"
+  ],
   "properties": {
     "$schema": {
       "type": "string",
@@ -14,16 +16,27 @@
     "bar": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["transition", "palette", "workspaceIndicator"],
+      "required": [
+        "transition",
+        "palette",
+        "workspaceIndicator"
+      ],
       "properties": {
         "transition": {
           "type": "object",
           "description": "The bar window's own show/hide transition.",
           "additionalProperties": false,
-          "required": ["in", "out"],
+          "required": [
+            "in",
+            "out"
+          ],
           "properties": {
-            "in": { "$ref": "#/definitions/transition" },
-            "out": { "$ref": "#/definitions/transition" }
+            "in": {
+              "$ref": "#/definitions/transition"
+            },
+            "out": {
+              "$ref": "#/definitions/transition"
+            }
           }
         },
         "palette": {
@@ -47,19 +60,35 @@
               "$ref": "#/definitions/color",
               "description": "Background for popovers and other \"active\" surfaces (e.g. the search panel)."
             },
-            "text": { "$ref": "#/definitions/color" },
-            "accent": { "$ref": "#/definitions/color" },
-            "accentText": { "$ref": "#/definitions/color" },
-            "success": { "$ref": "#/definitions/color" },
-            "danger": { "$ref": "#/definitions/color" }
+            "text": {
+              "$ref": "#/definitions/color"
+            },
+            "accent": {
+              "$ref": "#/definitions/color"
+            },
+            "accentText": {
+              "$ref": "#/definitions/color"
+            },
+            "success": {
+              "$ref": "#/definitions/color"
+            },
+            "danger": {
+              "$ref": "#/definitions/color"
+            }
           }
         },
         "workspaceIndicator": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["transition", "size", "spacing"],
+          "required": [
+            "transition",
+            "size",
+            "spacing"
+          ],
           "properties": {
-            "transition": { "$ref": "#/definitions/transition" },
+            "transition": {
+              "$ref": "#/definitions/transition"
+            },
             "size": {
               "type": "number",
               "exclusiveMinimum": 0,

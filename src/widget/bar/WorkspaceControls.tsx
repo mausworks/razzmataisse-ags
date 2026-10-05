@@ -1,7 +1,6 @@
 import config from "@config";
 import { alpha, defineStyle, transitions } from "@lib/css";
 import {
-  createWorkspacesActions,
   createWorkspacesModel,
   WORKSPACE_FLAGS,
   WorkspaceId,
@@ -11,7 +10,7 @@ import theme from "@theme";
 import Overlay from "@ui/Overlay";
 import defineProgressMeter from "@ui/ProgressMeter";
 import Square from "@ui/Square";
-import { For } from "ags";
+import { createComputed, For } from "ags";
 import { Gtk } from "ags/gtk4";
 
 const ORB_SIZE = theme.bar.workspaceIndicator.size;
@@ -37,12 +36,14 @@ export default function Workspaces({
   max = MAX_WORKSPACES,
   backfill = true,
 }: WorkspaceControlsProps) {
-  const { workspaces, maxId } = createWorkspacesModel();
-  const { focus } = createWorkspacesActions();
+  const { workspaces, maxId, openIds, focus } = createWorkspacesModel();
 
   // The model always tracks the full 1-10 range -- `max` only limits how
   // many of those slots this component actually renders.
   const visibleWorkspaces = workspaces.as((list) => list.slice(0, max));
+  const progress = createComputed(() =>
+    !backfill ? openIds().length - 1 : Math.min(maxId(), max) - 1,
+  );
 
   return (
     <Overlay
@@ -67,7 +68,7 @@ export default function Workspaces({
         </box>
       }
     >
-      <Track progress={maxId.as((id) => Math.min(id, max) - 1)} />
+      <Track progress={progress} />
     </Overlay>
   );
 }

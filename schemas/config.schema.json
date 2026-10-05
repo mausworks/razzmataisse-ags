@@ -5,7 +5,10 @@
   "description": "Non-visual settings for the shell, bridged into src/ as `@config`.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["search", "bar"],
+  "required": [
+    "search",
+    "bar"
+  ],
   "properties": {
     "$schema": {
       "type": "string",
@@ -29,17 +32,27 @@
         "launcher": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["visible"],
+          "required": [
+            "visible"
+          ],
           "properties": {
-            "visible": { "type": "boolean" }
+            "visible": {
+              "type": "boolean"
+            }
           }
         },
         "workspaces": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["visible", "max", "backfill"],
+          "required": [
+            "visible",
+            "max",
+            "backfill"
+          ],
           "properties": {
-            "visible": { "type": "boolean" },
+            "visible": {
+              "type": "boolean"
+            },
             "max": {
               "type": "integer",
               "minimum": 1,
@@ -54,9 +67,14 @@
         "windowTitle": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["visible", "default"],
+          "required": [
+            "visible",
+            "default"
+          ],
           "properties": {
-            "visible": { "type": "boolean" },
+            "visible": {
+              "type": "boolean"
+            },
             "default": {
               "type": "string",
               "description": "Shown in place of a window title when no window is focused."
@@ -66,7 +84,9 @@
         "wifi": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["visible"],
+          "required": [
+            "visible"
+          ],
           "properties": {
             "visible": {
               "type": "boolean",
@@ -77,7 +97,9 @@
         "bluetooth": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["visible"],
+          "required": [
+            "visible"
+          ],
           "properties": {
             "visible": {
               "type": "boolean",
@@ -88,7 +110,9 @@
         "audio": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["visible"],
+          "required": [
+            "visible"
+          ],
           "properties": {
             "visible": {
               "type": "boolean",
@@ -99,9 +123,16 @@
         "clock": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["visible", "dateFormat", "timeFormat", "interval"],
+          "required": [
+            "visible",
+            "dateFormat",
+            "timeFormat",
+            "interval"
+          ],
           "properties": {
-            "visible": { "type": "boolean" },
+            "visible": {
+              "type": "boolean"
+            },
             "dateFormat": {
               "type": "string",
               "description": "`date`(1) format string for the date portion."
@@ -120,11 +151,18 @@
         "calendar": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["visible", "showWeekNumbers"],
+          "required": [
+            "visible",
+            "showWeekNumbers"
+          ],
           "description": "The calendar popover opened from the clock.",
           "properties": {
-            "visible": { "type": "boolean" },
-            "showWeekNumbers": { "type": "boolean" }
+            "visible": {
+              "type": "boolean"
+            },
+            "showWeekNumbers": {
+              "type": "boolean"
+            }
           }
         }
       }
@@ -132,28 +170,36 @@
     "search": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["grepCommand", "roots", "ignoredDesktopEntries", "ignoreGlobs"],
+      "required": [
+        "roots",
+        "ignoredDesktopEntries",
+        "ignoreGlobs"
+      ],
       "properties": {
-        "grepCommand": {
-          "type": "string",
-          "minLength": 1,
-          "description": "The ripgrep-compatible binary used for the launcher's file search (name on $PATH, or an absolute path)."
-        },
         "roots": {
           "type": "array",
           "description": "Directories searched for files, expanded from a leading '~' to the home directory (ripgrep itself has no shell to do that expansion for it).",
-          "items": { "type": "string", "minLength": 1 },
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
           "minItems": 1
         },
         "ignoredDesktopEntries": {
           "type": "array",
           "description": "Case-insensitive glob patterns (`*` wildcard only) matched against both a .desktop file's id and its display name -- matching apps are hidden from search entirely.",
-          "items": { "type": "string", "minLength": 1 }
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         },
         "ignoreGlobs": {
           "type": "array",
           "description": "ripgrep --iglob patterns excluded from the file search under $HOME. A leading \"!\" excludes; bare names (no slash) match at any depth.",
-          "items": { "type": "string", "minLength": 1 }
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       }
     }
