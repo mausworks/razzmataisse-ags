@@ -161,6 +161,7 @@ export default function LauncherWindow({ monitor }: LauncherWindowProps) {
               placeholderText={mode.as((current) => MODE_PLACEHOLDER[current])}
               $={(self: Gtk.Entry) => (entry = self)}
               onNotifyText={(self) => {
+                update(self.text);
                 self.set_position(-1);
                 self.set_alignment(mode.peek() === "calc" ? 1 : 0);
               }}
@@ -175,7 +176,9 @@ export default function LauncherWindow({ monitor }: LauncherWindowProps) {
             visible={mode.as((current) => current === "calc")}
           >
             <label
-              label={results.as(([answer]) => answer ?? "0")}
+              label={results.as(([answer]) =>
+                answer?.type === "calc" ? answer.value : "0",
+              )}
               class={calcResultClass}
               xalign={0}
             />
@@ -328,6 +331,8 @@ const resultIcon = (result: LauncherResult): string | Gio.Icon => {
       return fileIcon(result.path);
     case "exec":
       return "utilities-terminal-symbolic";
+    case "calc":
+      return "accessories-calculator-symbolic";
   }
 };
 

@@ -248,8 +248,12 @@ export const createLauncherModel = () => {
     debounceTimer?.cancel();
 
     if (!input) {
+      setText("");
       setResults(topResults());
-    } else if (mode.peek() === "search") {
+      return;
+    }
+
+    if (mode.peek() === "search") {
       const newMode = parseLauncherMode(input);
       const newText = newMode === "search" ? input : input.slice(1).trim();
 
