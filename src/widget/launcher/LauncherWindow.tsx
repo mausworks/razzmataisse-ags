@@ -45,13 +45,14 @@ const PLACEHOLDER: Record<SearchMode, string> = {
   equals: "0",
 };
 
-// How many characters wide the expression/result readout holds steady at
-// in calculator mode, matching `(         0 = 0 )`'s own layout -- the "="
-// sign's position only ever depends on the (fixed-width) expression side,
-// never the result, so a result growing past this many digits is the only
-// thing that can still shift anything (the closing paren).
-const CALC_EXPRESSION_CHARS = 10;
-const CALC_RESULT_CHARS = 4;
+// How wide (in px) the expression side of the calculator readout holds
+// steady at -- `Gtk.Entry` always fills whatever box it's given (`halign`
+// doesn't shrink it to content, confirmed live), so this reserves the
+// space and `self.set_alignment(1)` (called from `onNotifyText`, see
+// below) right-aligns the text within it. The "=" sign's position only
+// ever depends on this fixed width, never on the result (which gets its
+// own breathing room via padding instead, see calcResultBoxClass).
+const CALC_EXPRESSION_WIDTH = 110;
 
 export default function LauncherWindow({ monitor }: LauncherWindowProps) {
   const { query, results, calcResult, setText, reset } = createLauncherModel();
@@ -173,60 +174,75 @@ export default function LauncherWindow({ monitor }: LauncherWindowProps) {
               visible={mode.as((current) => current === "equals")}
             />
           </box>
-          <entry
-            class={entryFieldClass(
-              mode.as((current) => current === "equals" && "calc"),
+          <box
+            widthRequest={mode.as((current) =>
+              current === "equals" ? CALC_EXPRESSION_WIDTH : -1,
             )}
-            hexpand={mode.as((current) => current !== "equals")}
-            xalign={mode.as((current) => (current === "equals" ? 1 : 0))}
-            widthChars={mode.as((current) =>
-              current === "equals" ? CALC_EXPRESSION_CHARS : -1,
-            )}
-            placeholderText={mode.as((current) => PLACEHOLDER[current])}
-            $={(self: Gtk.Entry) => (entry = self)}
-            onNotifyText={(self) => {
-              const typed = self.text;
-              const currentMode = mode.peek();
+          >
+            <entry
+              class={entryFieldClass(
+                mode.as((current) => current === "equals" && "calc"),
+              )}
+              hexpand={mode.as((current) => current !== "equals")}
+              placeholderText={mode.as((current) => PLACEHOLDER[current])}
+              $={(self: Gtk.Entry) => (entry = self)}
+              onNotifyText={(self) => {
+                const typed = self.text;
+                const currentMode = mode.peek();
 
-              if (
-                currentMode === "search" &&
-                (typed.startsWith("$") ||
-                  typed.startsWith("#") ||
-                  typed.startsWith("="))
-              ) {
-                const prefix = typed[0] as "$" | "#" | "=";
-                const rest = typed.slice(1);
-                setMode(
-                  prefix === "$"
-                    ? "dollar"
-                    : prefix === "#"
-                      ? "hash"
-                      : "equals",
-                );
-                self.set_text(rest);
-                setText(prefix + rest);
-                return;
-              }
+                if (
+                  currentMode === "search" &&
+                  (typed.startsWith("$") ||
+                    typed.startsWith("#") ||
+                    typed.startsWith("="))
+                ) {
+                  const prefix = typed[0] as "$" | "#" | "=";
+                  const rest = typed.slice(1);
+                  const newMode =
+                    prefix === "$"
+                      ? "dollar"
+                      : prefix === "#"
+                        ? "hash"
+                        : "equals";
+                  setMode(newMode);
+                  self.set_alignment(newMode === "equals" ? 1 : 0);
+                  self.set_text(rest);
+                  // `set_text()` leaves the cursor at position 0 -- with
+                  // nothing typed yet that's invisible, but it means the
+                  // very first real keystroke starts from a cursor at the
+                  // *start*, and GTK's keep-the-cursor-visible scrolling
+                  // then anchors the view to the left from then on,
+                  // overriding `xalign` for the rest of the session.
+                  self.set_position(-1);
+                  setText(prefix + rest);
+                  return;
+                }
 
-              const prefix =
-                currentMode === "dollar"
-                  ? "$"
-                  : currentMode === "hash"
-                    ? "#"
-                    : currentMode === "equals"
-                      ? "="
-                      : "";
-              setText(prefix + typed);
-            }}
-            onActivate={runSelected}
-          />
-          <box spacing={4} visible={mode.as((current) => current === "equals")}>
+                const prefix =
+                  currentMode === "dollar"
+                    ? "$"
+                    : currentMode === "hash"
+                      ? "#"
+                      : currentMode === "equals"
+                        ? "="
+                        : "";
+                setText(prefix + typed);
+              }}
+              onActivate={runSelected}
+            />
+          </box>
+          <box visible={mode.as((current) => current === "equals")}>
             <label label="=" class={calcGlyphClass} />
+          </box>
+          <box
+            class={calcResultBoxClass}
+            visible={mode.as((current) => current === "equals")}
+          >
             <label
               label={calcResult.as((result) => result ?? "0")}
               class={calcResultClass}
-              xalign={0}
-              widthChars={CALC_RESULT_CHARS}
+              xalign={0.5}
+              hexpand
             />
           </box>
         </box>
@@ -459,6 +475,7 @@ const entryFieldClass = defineStyle({
   variants: {
     calc: {
       fontFamily: "monospace",
+      fontSize: 16,
     },
   },
 });
@@ -467,7 +484,7 @@ const calcGlyphClass = defineStyle({
   style: {
     color: alpha(palette.text, 0.5),
     fontFamily: "monospace",
-    fontSize: 14,
+    fontSize: 16,
   },
 })();
 
@@ -476,7 +493,15 @@ const calcResultClass = defineStyle({
     color: palette.text,
     fontFamily: "monospace",
     fontWeight: "bold",
-    fontSize: 14,
+    fontSize: 16,
+  },
+})();
+
+// ~2em (at the 16px calc font size above) of breathing room on each side
+// of the result, approximated in px since GTK CSS has no em unit.
+const calcResultBoxClass = defineStyle({
+  style: {
+    padding: "0 32px",
   },
 })();
 
