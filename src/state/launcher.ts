@@ -213,42 +213,53 @@ export const createLauncherModel = () => {
       .catch((err) => console.error("math evaluation failed:", err));
   };
 
-  const update = (text: string) => {
-    debounceTimer?.cancel();
+  const handleSearch = (query: string) => {
+    const id = ++generation;
 
-    if (!text) {
-      setResults(topResults());
-      return;
-    }
+    setResults(searchApps(query));
 
-    if (mode.peek() === "search") {
-      const newMode = parseLauncherMode(text);
+    debounceTimer = timeout(200, () => {
+      searchFiles(query)
+        .then((fileResults) => {
+          if (id !== generation) return;
 
-      setText(newMode === "search" ? text : text.slice(1).trim());
-      setMode(newMode);
-    }
+          setResults((state) => [...state, ...fileResults]);
+        })
+        .catch((err) => console.error("file search failed:", err));
+    });
+  };
 
-    if (mode.peek() === "calc") {
-      handleCalc(text.trim());
-    } else if (mode.peek() === "exec") {
-      const command = parseCommand(text);
+  const processUpdate = () => {
+    const newText = text.peek();
+    const newMode = mode.peek();
+
+    if (newMode === "calc") {
+      handleCalc(newText.trim());
+    } else if (newMode === "exec") {
+      const command = parseCommand(newText);
 
       setResults(command ? [command] : []);
     } else {
-      const id = ++generation;
-
-      setResults(searchApps(text));
-
-      debounceTimer = timeout(200, () => {
-        searchFiles(text)
-          .then((fileResults) => {
-            if (id !== generation) return;
-
-            setResults((state) => [...state, ...fileResults]);
-          })
-          .catch((err) => console.error("file search failed:", err));
-      });
+      handleSearch(newText);
     }
+  };
+
+  const update = (input: string) => {
+    debounceTimer?.cancel();
+
+    if (!input) {
+      setResults(topResults());
+    } else if (mode.peek() === "search") {
+      const newMode = parseLauncherMode(input);
+      const newText = newMode === "search" ? input : input.slice(1).trim();
+
+      setText(newText);
+      setMode(newMode);
+    } else {
+      setText(input);
+    }
+
+    processUpdate();
   };
 
   const reset = () => {
