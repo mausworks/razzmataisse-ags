@@ -23,8 +23,8 @@ _Getting started is easy, and customizations are a breeze!_
   Fuzzy-searches installed apps, searches filenames and file contents under
   '$HOME' via 'rg', shows themed per-file-type icons, supports
   '!cmd' to run a one-off shell command in a terminal, and '=' to evaluate
-  arithmetic expressions (e.g. '=2 + 2') via 'bc', shown live next to the
-  '=' sign as you type.
+  arithmetic expressions, constants, and unit conversions (e.g. '=2 + 2' or
+  '=5 km to miles') via 'qalc', shown as a result row like any other match.
 - **@lib/css** ('src/lib/css') — a small CSS-in-JS layer purpose-built for
   GTK4's CSS dialect: 'defineStyle' for reusable, variant-aware classes,
   reactive 'cx(...)' composition driven by Accessors, plus helpers for
@@ -55,7 +55,9 @@ itself. Both are validated against JSON schemas in [schemas/](schemas/)
 - [ripgrep](https://github.com/BurntSushi/ripgrep) ('rg') — used for the
   launcher's file search (search roots and ignored globs are configurable
   via 'config.json'; the binary itself is not)
-- 'bc' — evaluates expressions typed in the launcher's '=' calculator mode
+- [qalc](https://qalculate.github.io) ('libqalculate') — evaluates expressions
+  typed in the launcher's '=' calculator mode (constants, units/currency
+  conversion, etc.)
 - 'wl-clipboard' ('wl-copy') — copies a calculator result to the clipboard
   when selected
 
