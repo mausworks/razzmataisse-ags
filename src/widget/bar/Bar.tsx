@@ -1,10 +1,10 @@
 import config from "@config";
 import { defineStyle } from "@lib/css";
+import { IS_DEV } from "@lib/dev";
 import { withLayerBlur } from "@lib/hyprland";
 import theme from "@theme";
 import { Astal, Gdk } from "ags/gtk4";
 import app from "ags/gtk4/app";
-import GLib from "gi://GLib";
 
 import BluetoothButton from "./BluetoothButton";
 import Clock from "./Clock";
@@ -21,7 +21,7 @@ const { TOP, LEFT, RIGHT } = Astal.WindowAnchor;
 // other window each time that reservation appears/disappears. NORMAL still
 // anchors the bar in place without reserving space, so restarts don't
 // shuffle the rest of the layout.
-const BAR_EXCLUSIVITY = GLib.getenv("AGS_DEV")
+const BAR_EXCLUSIVITY = IS_DEV
   ? Astal.Exclusivity.NORMAL
   : Astal.Exclusivity.EXCLUSIVE;
 

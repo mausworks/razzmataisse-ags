@@ -9,3 +9,11 @@ export const excludeFlags = <F extends number>(value: F, flags: F) =>
 /** Whether `value` has every flag set in `flags`. */
 export const hasFlags = <F extends number>(value: F, flags: F) =>
   (value & flags) === flags;
+
+export const flagNames = <F extends number>(
+  value: F,
+  flags: Record<string, F>,
+) =>
+  Object.entries(flags)
+    .filter(([, flag]) => hasFlags(value, flag))
+    .map(([name]) => name);
