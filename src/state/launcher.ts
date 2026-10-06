@@ -123,13 +123,10 @@ const searchRoots = roots.map(expandRoot);
 const MAX_FILE_RESULTS = 8;
 
 /**
- * Searches file names and file contents under `config.search.roots`,
- * using `config.search.grepCommand` (`rg` by default).
- * `grepCommand` only swaps which binary gets run, not the dialect, so it's
- * really "point at a different/renamed ripgrep build" rather than "use any
- * grep-like tool". Both run in parallel; ripgrep exits non-zero on "no
- * matches", which `execAsync` treats as a rejection, so that's swallowed
- * into an empty result rather than surfaced as an error.
+ * Searches file names and file contents under `config.search.roots` via
+ * `rg`. Both run in parallel; ripgrep exits non-zero on "no matches",
+ * which `execAsync` treats as a rejection, so that's swallowed into an
+ * empty result rather than surfaced as an error.
  */
 const searchFiles = async (query: string): Promise<FileResult[]> => {
   const [nameMatches, contentMatches] = await Promise.all([
