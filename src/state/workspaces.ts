@@ -1,3 +1,5 @@
+import { IS_DEV } from "@lib/dev";
+import { flagNames } from "@lib/flags";
 import Lua from "@lib/lua";
 import { notificationWorkspaceIds } from "@lib/notifications";
 import {
@@ -12,18 +14,18 @@ import {
   Accessor,
   createBinding,
   createEffect,
-  createMemo,
   createRoot,
+  createState,
 } from "gnim";
 
 const Hyprland = AstalHyprland.get_default()!;
 const Notifd = AstalNotifd.get_default();
 
 export const WORKSPACE_FLAGS = {
-  CLOSED: 1,
-  OPEN: 2,
-  FILLER: 4,
-  FOCUSED: 8,
+  CLOSED: 0,
+  OPEN: 1,
+  FILLER: 2,
+  FOCUSED: 4,
 } as const;
 
 /** One individual flag value from `WORKSPACE_FLAGS`. */
@@ -31,7 +33,7 @@ export type WorkspaceFlag =
   (typeof WORKSPACE_FLAGS)[keyof typeof WORKSPACE_FLAGS];
 
 /** Any bitwise combination of `WorkspaceFlag`s. */
-export type WorkspaceFlags = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+export type WorkspaceFlags = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
 export type WorkspaceId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 
@@ -71,20 +73,21 @@ const openIds = createBinding(Hyprland, "workspaces").as((list) =>
   list.map((ws) => ws.id),
 );
 const focusedId = createBinding(Hyprland, "focusedWorkspace").as((ws) => ws.id);
-const maxId = createMemo(() =>
-  openIds().reduce((max, id) => Math.max(max, id), focusedId()),
-);
+const [maxId, setMaxId] = createState(focusedId.peek());
 
 createRoot(() => {
+  const notifications = createBinding(Notifd, "notifications");
+  const clients = createBinding(Hyprland, "clients");
+
   createEffect(() => {
+    const ids = openIds();
     const focused = focusedId();
-    const ids = openIds.peek();
-    const max = maxId.peek();
+    const max = ids.reduce((max, id) => Math.max(max, id), focused);
 
     WORKSPACES.forEach((ws) => {
       const isOpen = ids.includes(ws.id);
-      const isFiller = !isOpen && ws.id <= max;
       const isFocused = ws.id === focused;
+      const isFiller = !isOpen && ws.id <= max;
 
       const flags = (Number(isOpen && WORKSPACE_FLAGS.OPEN) |
         Number(isFiller && WORKSPACE_FLAGS.FILLER) |
@@ -92,27 +95,28 @@ createRoot(() => {
 
       ws.flags.set(flags);
     });
-  });
 
-  const notifications = createBinding(Notifd, "notifications");
-  const clients = createBinding(Hyprland, "clients");
+    setMaxId(max);
+  });
 
   createEffect(() => {
     const allNotifications = notifications();
     const allClients = clients();
-
     const byWorkspace = new Map<WorkspaceId, WorkspaceNotifications>();
+
     for (const notification of allNotifications) {
       for (const id of notificationWorkspaceIds(notification, allClients)) {
         const summary = byWorkspace.get(id as WorkspaceId) ?? {
           count: 0,
           urgency: AstalNotifd.Urgency.LOW,
         };
+
         summary.count++;
         summary.urgency = Math.max(
           summary.urgency,
           notification.urgency,
         ) as AstalNotifd.Urgency;
+
         byWorkspace.set(id as WorkspaceId, summary);
       }
     }

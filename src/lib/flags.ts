@@ -15,5 +15,5 @@ export const flagNames = <F extends number>(
   flags: Record<string, F>,
 ) =>
   Object.entries(flags)
-    .filter(([, flag]) => hasFlags(value, flag))
+    .filter(([, flag]) => flag !== 0 && hasFlags(value, flag))
     .map(([name]) => name);

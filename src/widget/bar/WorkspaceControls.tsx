@@ -123,7 +123,7 @@ const Track = defineProgressMeter({
     shrink: "300ms 100ms ease",
   },
   paddingX: ORB_SPACING,
-  background: alpha(theme.bar.palette.text, 0.08),
+  background: alpha(theme.bar.palette.text, 0.03),
   segment: {
     count: MAX_WORKSPACES,
     width: ORB_SIZE + ORB_SPACING,
@@ -151,7 +151,7 @@ const buttonClass = defineStyle({
 const buttonLabelClass = defineStyle({
   style: {
     background: "none",
-    color: alpha(theme.bar.palette.text, 0.5),
+    color: alpha(theme.bar.palette.text, 0.1),
     border: "none",
     fontFeatureSettings: '"tnum"',
     fontSize: 12,
@@ -161,6 +161,7 @@ const buttonLabelClass = defineStyle({
     opacity: 0,
     transformOrigin: "center center",
     transition: transitions({
+      color: "100ms ease-out",
       opacity: "300ms ease-out",
     }),
   },
@@ -171,6 +172,7 @@ const buttonLabelClass = defineStyle({
       opacity: 1,
       color: alpha(theme.bar.palette.text, 0.5),
       transition: transitions({
+        color: "100ms 200ms ease-out",
         opacity: "300ms 250ms ease-out",
       }),
     },
