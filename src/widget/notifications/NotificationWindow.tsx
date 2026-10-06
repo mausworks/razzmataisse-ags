@@ -1,5 +1,6 @@
 import { alpha, defineStyle, lighter } from "@lib/css";
 import { withLayerBlur } from "@lib/hyprland";
+import { notificationWorkspaceIds } from "@lib/notifications";
 import theme from "@theme";
 import { createBinding, createComputed, For } from "ags";
 import { Astal, Gdk, Gtk } from "ags/gtk4";
@@ -9,23 +10,6 @@ import AstalNotifd from "gi://AstalNotifd?version=0.1";
 
 const Notifd = AstalNotifd.get_default();
 const Hyprland = AstalHyprland.get_default()!;
-
-/**
- * A notification carries no window/PID of its own to match against --
- * just `appName`/`desktopEntry` -- so the best we can do is compare those
- * against each client's WM class (case-insensitively; exact casing drifts
- * between an app's desktop-entry id and its reported class often enough
- * that an exact-case match would miss real matches).
- */
-const matchesApp = (
-  client: AstalHyprland.Client,
-  notification: AstalNotifd.Notification,
-): boolean => {
-  const windowClass = client.class.toLowerCase();
-  return [notification.desktopEntry, notification.appName]
-    .filter(Boolean)
-    .some((identifier) => identifier.toLowerCase() === windowClass);
-};
 
 /**
  * A notification whose app has no open window at all (a system notification
@@ -39,11 +23,8 @@ const isOnActiveWorkspace = (
   clients: AstalHyprland.Client[],
   activeWorkspace: AstalHyprland.Workspace,
 ): boolean => {
-  const matches = clients.filter((client) => matchesApp(client, notification));
-  return (
-    matches.length === 0 ||
-    matches.some((client) => client.workspace.id === activeWorkspace.id)
-  );
+  const ids = notificationWorkspaceIds(notification, clients);
+  return ids.length === 0 || ids.includes(activeWorkspace.id);
 };
 
 const { palette } = theme.bar;
