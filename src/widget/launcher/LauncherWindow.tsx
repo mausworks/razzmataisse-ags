@@ -32,9 +32,21 @@ const MODE_PLACEHOLDER: Record<LauncherMode, string> = {
   calc: "0",
 };
 
+// Fixed fraction of the monitor's height, computed once -- *not* derived
+// from the panel's own (content-dependent) height. Anything tied to the
+// panel's actual size would shift this every time results/mode change
+// it, which is exactly the "grows from the center" jumpiness this is
+// replacing: active mode should settle near the center once and then
+// only ever grow downward from there.
+const ACTIVE_TOP_FRACTION = 0.2;
+
 export default function LauncherWindow({ monitor }: LauncherWindowProps) {
   const { text, mode, results, update, reset } = createLauncherModel();
   const isActive = text.as((value) => value.length > 0);
+
+  const activeMarginTop = Math.round(
+    monitor.get_geometry().height * ACTIVE_TOP_FRACTION,
+  );
 
   const [selectedIndex, setSelectedIndex] = createState(0);
 
@@ -89,7 +101,9 @@ export default function LauncherWindow({ monitor }: LauncherWindowProps) {
           ? Astal.WindowAnchor.TOP
           : Astal.WindowAnchor.TOP | Astal.WindowAnchor.LEFT,
       )}
-      marginTop={BAR_HEIGHT + DOCK_GAP}
+      marginTop={isActive.as((active) =>
+        active ? activeMarginTop : BAR_HEIGHT + DOCK_GAP,
+      )}
       marginLeft={DOCK_MARGIN_LEFT}
       application={app}
       onNotifyVisible={(self) => {
