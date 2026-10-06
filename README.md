@@ -181,14 +181,6 @@ See `src/lib/css/` for the rest — `animation.ts` (keyframes), `color.ts`
 (`alpha`/`mix`/`shade`/...), `units.ts` (`px`/`percent`/`deg`/...), and
 `gtk-extensions.ts` for GTK-only CSS properties.
 
-## Running it for real
+---
 
-Launch the shell the same way `ags run` normally would, pointed at the
-entrypoint:
-
-```sh
-ags run src/app.ts --gtk 4
-```
-
-Typically wired into Hyprland's own config (see
-[Getting started](#getting-started)) rather than started by hand.
+That's the tour. Fork it, reshape it, make it yours.
