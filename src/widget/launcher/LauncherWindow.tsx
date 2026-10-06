@@ -163,24 +163,8 @@ export default function LauncherWindow({ monitor }: LauncherWindowProps) {
               onNotifyText={(self) => {
                 update(self.text);
                 self.set_position(-1);
-                self.set_alignment(mode.peek() === "calc" ? 1 : 0);
               }}
               onActivate={runSelected}
-            />
-          </box>
-          <box visible={mode.as((current) => current === "calc")}>
-            <label label="=" class={calcGlyphClass} />
-          </box>
-          <box
-            class={calcResultBoxClass}
-            visible={mode.as((current) => current === "calc")}
-          >
-            <label
-              label={results.as(([answer]) =>
-                answer?.type === "calc" ? answer.value : "0",
-              )}
-              class={calcResultClass}
-              xalign={0}
             />
           </box>
         </box>
@@ -212,7 +196,7 @@ type ResultRowProps = {
 
 function ResultRow({ result, selected, onRun }: ResultRowProps) {
   const subtitle = resultSubtitle(result);
-  const icon = resultIcon(result);
+  const icon = result.type !== "calc" && resultIcon(result);
 
   return (
     <button
@@ -222,10 +206,12 @@ function ResultRow({ result, selected, onRun }: ResultRowProps) {
       halign={Gtk.Align.FILL}
     >
       <box spacing={8} hexpand>
-        {typeof icon === "string" ? (
+        {result.type === "calc" ? (
+          <label label="=" class={calcRowGlyphClass} />
+        ) : typeof icon === "string" ? (
           <image iconName={icon} />
         ) : (
-          <image gicon={icon} />
+          <image gicon={icon as Gio.Icon} />
         )}
         <box orientation={Gtk.Orientation.VERTICAL} hexpand>
           <label
@@ -233,6 +219,7 @@ function ResultRow({ result, selected, onRun }: ResultRowProps) {
             halign={Gtk.Align.START}
             ellipsize={3}
             hexpand
+            class={result.type === "calc" ? calcAnswerClass : ""}
           />
           {subtitle && (
             <label
@@ -323,7 +310,9 @@ const fileIcon = (path: string): Gio.Icon => {
   return Gio.content_type_get_icon(contentType);
 };
 
-const resultIcon = (result: LauncherResult): string | Gio.Icon => {
+const resultIcon = (
+  result: Exclude<LauncherResult, { type: "calc" }>,
+): string | Gio.Icon => {
   switch (result.type) {
     case "app":
       return result.app.iconName || "application-x-executable-symbolic";
@@ -331,8 +320,6 @@ const resultIcon = (result: LauncherResult): string | Gio.Icon => {
       return fileIcon(result.path);
     case "exec":
       return "utilities-terminal-symbolic";
-    case "calc":
-      return "accessories-calculator-symbolic";
   }
 };
 
@@ -358,7 +345,7 @@ const resultSubtitle = (result: LauncherResult): string | false => {
     case "exec":
       return "Run in a terminal";
     case "calc":
-      return false;
+      return "Press enter to copy.";
   }
 };
 
@@ -411,33 +398,21 @@ const entryFieldClass = defineStyle({
   variants: {
     calc: {
       fontFamily: "monospace",
-      fontSize: 16,
     },
   },
 });
 
-const calcGlyphClass = defineStyle({
+const calcRowGlyphClass = defineStyle({
   style: {
-    color: alpha(palette.text, 0.5),
-    fontFamily: "monospace",
-    fontSize: 16,
-  },
-})();
-
-const calcResultClass = defineStyle({
-  style: {
-    color: palette.text,
+    color: palette.accent,
     fontFamily: "monospace",
     fontWeight: "bold",
-    fontSize: 16,
   },
 })();
 
-// ~2em (at the 16px calc font size above) of breathing room on each side
-// of the result, approximated in px since GTK CSS has no em unit.
-const calcResultBoxClass = defineStyle({
+const calcAnswerClass = defineStyle({
   style: {
-    padding: "0 32px",
+    fontFamily: "monospace",
   },
 })();
 
