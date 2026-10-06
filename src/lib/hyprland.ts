@@ -76,8 +76,6 @@ const enableLayerBlur = (
     })})`,
   );
 
-const blurredNamespaces = new Set<string>();
-
 /**
  * Wraps a `<window>`'s own `$` ref callback so blur is registered exactly
  * once -- tied to that window's actual GTK construction (its `$` fires
@@ -95,16 +93,15 @@ const blurredNamespaces = new Set<string>();
  * // or composed with the window's own ref logic:
  * <window namespace="launcher" $={withLayerBlur((self) => { ... })}>
  * ```
+ *
  */
-export const withLayerBlur =
-  <W extends Astal.Window>(
-    ref?: (self: W) => void,
-    options?: LayerBlurOptions,
-  ) =>
-  (self: W) => {
-    if (!blurredNamespaces.has(self.namespace)) {
-      blurredNamespaces.add(self.namespace);
-      enableLayerBlur(self.namespace, options);
-    }
+export function withLayerBlur<W extends Astal.Window>(
+  options?: LayerBlurOptions,
+  ref?: (self: W) => void,
+) {
+  return (self: W) => {
+    enableLayerBlur(self.namespace, options);
+
     ref?.(self);
   };
+}

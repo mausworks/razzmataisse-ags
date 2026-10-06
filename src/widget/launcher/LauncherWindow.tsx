@@ -113,7 +113,7 @@ export default function LauncherWindow({ monitor }: LauncherWindowProps) {
         entry?.set_text("");
         entry?.grab_focus();
       }}
-      $={withLayerBlur((self) => {
+      $={withLayerBlur({}, (self) => {
         window = self;
 
         const controller = new Gtk.EventControllerKey();
