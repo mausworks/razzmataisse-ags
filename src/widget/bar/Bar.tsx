@@ -9,8 +9,8 @@ import GLib from "gi://GLib";
 import BluetoothButton from "./BluetoothButton";
 import Clock from "./Clock";
 import LauncherButton from "./LauncherButton";
-import NetworkButton from "./NetworkButton";
 import VolumeButton from "./VolumeButton";
+import NetworkButton from "./WifiButton";
 import WindowTitle from "./WindowTitle";
 import WorkspaceControls from "./WorkspaceControls";
 

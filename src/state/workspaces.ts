@@ -32,12 +32,8 @@ export type WorkspaceModel = {
   flags: MutableFlags<WorkspaceFlags>;
 };
 
-export const createWorkspacesActions = () => {
-  const focus = (id: WorkspaceId) =>
-    Hyprland.dispatch("hl.dsp.focus", Lua.stringify({ workspace: id }));
-
-  return { focus };
-};
+const focus = (id: WorkspaceId) =>
+  Hyprland.dispatch("hl.dsp.focus", Lua.stringify({ workspace: id }));
 
 const WORKSPACES: WorkspaceModel[] = Array.from({ length: 10 }, (_, i) => ({
   id: (i + 1) as WorkspaceId,
@@ -74,4 +70,10 @@ createRoot(() => {
   });
 });
 
-export const createWorkspacesModel = () => ({ workspaces, focusedId, maxId });
+export const createWorkspacesModel = () => ({
+  focus,
+  workspaces,
+  focusedId,
+  maxId,
+  openIds,
+});

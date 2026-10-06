@@ -27,42 +27,48 @@ const createNetworkModel = () => {
   );
 
   // Keeps each SSID's position stable across rescans, below.
-  const orderedSsids: string[] = [];
+  const orderedSSIDs = [] as string[];
 
   const accessPoints = createBinding(Network, "wifi", "accessPoints").as(
     (list) => {
-      const bySsid = new Map<string, AstalNetwork.AccessPoint>();
+      const bySSID = new Map<string, AstalNetwork.AccessPoint>();
       for (const ap of list ?? []) {
         if (!ap.ssid) continue;
-        const existing = bySsid.get(ap.ssid);
-        if (!existing || ap.strength > existing.strength)
-          bySsid.set(ap.ssid, ap);
+
+        const existing = bySSID.get(ap.ssid);
+
+        if (!existing || ap.strength > existing.strength) {
+          bySSID.set(ap.ssid, ap);
+        }
       }
 
       // The automatic rescan (see `interval` below) re-triggers this on its
       // own schedule, including while the popover is open -- re-sorting by
       // strength every time would reshuffle the list under a user who's
       // mid-click. Instead, newly-seen SSIDs are appended (sorted by
-      // strength among themselves), but an SSID already in `orderedSsids`
+      // strength among themselves), but an SSID already in `orderedSSIDs`
       // keeps its position regardless of later strength changes.
-      const seen = new Set(bySsid.keys());
-      for (let i = orderedSsids.length - 1; i >= 0; i--) {
-        if (!seen.has(orderedSsids[i])) orderedSsids.splice(i, 1);
-      }
-      const newSsids = [...seen]
-        .filter((ssid) => !orderedSsids.includes(ssid))
-        .sort((a, b) => bySsid.get(b)!.strength - bySsid.get(a)!.strength);
-      orderedSsids.push(...newSsids);
+      const seen = new Set(bySSID.keys());
 
-      return orderedSsids.map((ssid) => bySsid.get(ssid)!);
+      for (let i = orderedSSIDs.length - 1; i >= 0; i--) {
+        if (!seen.has(orderedSSIDs[i])) orderedSSIDs.splice(i, 1);
+      }
+
+      const newSSIDs = [...seen]
+        .filter((ssid) => !orderedSSIDs.includes(ssid))
+        .sort((a, b) => bySSID.get(b)!.strength - bySSID.get(a)!.strength);
+
+      orderedSSIDs.push(...newSSIDs);
+
+      return orderedSSIDs.map((ssid) => bySSID.get(ssid)!);
     },
   );
 
-  const activeBssid = createBinding(Network, "wifi", "activeAccessPoint").as(
+  const activeBSSID = createBinding(Network, "wifi", "activeAccessPoint").as(
     (ap) => ap?.bssid ?? null,
   );
 
-  return { iconName, enabled, accessPoints, activeBssid, hasWifi };
+  return { iconName, enabled, accessPoints, activeBSSID, hasWifi };
 };
 
 const createWifiActions = () => {
@@ -103,7 +109,7 @@ export type NetworkButtonProps = {
 };
 
 export default function NetworkButton({ visible = true }: NetworkButtonProps) {
-  const { iconName, enabled, accessPoints, activeBssid, hasWifi } =
+  const { iconName, enabled, accessPoints, activeBSSID, hasWifi } =
     createNetworkModel();
   const { enable, disable, toggle } = createWifiActions();
 
@@ -134,11 +140,11 @@ export default function NetworkButton({ visible = true }: NetworkButtonProps) {
           >
             <For each={accessPoints} id={(ap) => ap.bssid}>
               {(ap) => (
-                <Pill onClicked={() => toggle(ap, activeBssid.peek())}>
+                <Pill onClicked={() => toggle(ap, activeBSSID.peek())}>
                   <box spacing={6}>
                     <image
                       iconName={createBinding(ap, "iconName")}
-                      class={activeBssid.as((bssid) =>
+                      class={activeBSSID.as((bssid) =>
                         bssid === ap.bssid ? activeApClass : "",
                       )}
                     />
@@ -146,7 +152,7 @@ export default function NetworkButton({ visible = true }: NetworkButtonProps) {
                       label={ap.ssid ?? ""}
                       hexpand
                       halign={Gtk.Align.START}
-                      class={activeBssid.as((bssid) =>
+                      class={activeBSSID.as((bssid) =>
                         bssid === ap.bssid ? activeApClass : "",
                       )}
                     />

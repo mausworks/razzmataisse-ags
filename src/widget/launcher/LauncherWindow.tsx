@@ -3,9 +3,10 @@ import { withLayerBlur } from "@lib/hyprland";
 import {
   createLauncherModel,
   HOME,
-  runResult,
-  type SearchResult,
-} from "@state/search";
+  launch,
+  LauncherMode,
+  type LauncherResult,
+} from "@state/launcher";
 import theme from "@theme";
 import { Accessor, createComputed, createEffect, createState, For } from "ags";
 import { Astal, Gdk, Gtk } from "ags/gtk4";
@@ -25,33 +26,30 @@ export type LauncherWindowProps = {
   monitor: Gdk.Monitor;
 };
 
-/**
- * A single global window (not one per monitor -- `app.toggle_window("launcher")`
- * only makes sense for one uniquely-named window), toggled by `LauncherButton`
- * and the `SUPER + Space` keybind (`ags toggle launcher`, see keybinds.lua).
- *
- * Docked at the far left below the bar (anchored `TOP | LEFT`) while the
- * query is empty; once typing starts, switches to no anchor at all, which
- * centers it on the whole screen. Hyprland's own `layers` animation (see
- * animations.lua) is what makes that transition a slide instead of a jump;
- * not something verifiable headlessly -- check it looks right live.
- */
-type SearchMode = "search" | "dollar" | "hash" | "equals";
-
-const PLACEHOLDER: Record<SearchMode, string> = {
-  search: "Search apps and files, $cmd / #sudo cmd, or =calc…",
-  dollar: "Command to run…",
-  hash: "Command to run as root…",
-  equals: "0",
+const MODE_PLACEHOLDER: Record<LauncherMode, string> = {
+  search: "Launch apps, search files, or run commands…",
+  exec: "Execute command…",
+  calc: "0",
 };
 
-export default function LauncherWindow({ monitor }: LauncherWindowProps) {
-  const { query, results, calcResult, setText, reset } = createLauncherModel();
-  const isActive = query.as((text) => text.length > 0);
+// Fixed fraction of the monitor's height, computed once -- *not* derived
+// from the panel's own (content-dependent) height. Anything tied to the
+// panel's actual size would shift this every time results/mode change
+// it, which is exactly the "grows from the center" jumpiness this is
+// replacing: active mode should settle near the center once and then
+// only ever grow downward from there.
+const ACTIVE_TOP_FRACTION = 0.2;
 
-  const [mode, setMode] = createState<SearchMode>("search");
+export default function LauncherWindow({ monitor }: LauncherWindowProps) {
+  const { text, mode, results, update, reset } = createLauncherModel();
+  const isActive = text.as((value) => value.length > 0);
+
+  const activeMarginTop = Math.round(
+    monitor.get_geometry().height * ACTIVE_TOP_FRACTION,
+  );
 
   const [selectedIndex, setSelectedIndex] = createState(0);
+
   createEffect(() => {
     results();
     setSelectedIndex(0);
@@ -59,24 +57,28 @@ export default function LauncherWindow({ monitor }: LauncherWindowProps) {
 
   const moveSelection = (delta: number) => {
     const count = results.peek().length;
+
     if (count === 0) return;
+
     setSelectedIndex((current) =>
       Math.max(0, Math.min(count - 1, current + delta)),
     );
   };
 
   let entry: Gtk.Entry | undefined;
-  let win: Gtk.Window | undefined;
+  let window: Gtk.Window | undefined;
 
   createEffect(() => {
     const width = isActive() ? PANEL_WIDTH_ACTIVE : PANEL_WIDTH_DOCKED;
     results();
-    win?.set_default_size(width, -1);
+    window?.set_default_size(width, -1);
   });
 
   const runSelected = () => {
     const selected = results.peek()[selectedIndex.peek()];
-    if (selected) runResult(selected);
+
+    if (selected) launch(selected);
+
     app.get_window("launcher")!.visible = false;
   };
 
@@ -90,26 +92,34 @@ export default function LauncherWindow({ monitor }: LauncherWindowProps) {
       layer={Astal.Layer.OVERLAY}
       keymode={Astal.Keymode.ON_DEMAND}
       anchor={isActive.as((active) =>
+        // Anchored to TOP only (no LEFT/RIGHT) centers horizontally while
+        // pinning the top edge, so the panel only grows downward as
+        // results come in instead of re-centering vertically on every
+        // height change (which shifts the input box underneath you while
+        // typing).
         active
-          ? Astal.WindowAnchor.NONE
+          ? Astal.WindowAnchor.TOP
           : Astal.WindowAnchor.TOP | Astal.WindowAnchor.LEFT,
       )}
-      marginTop={BAR_HEIGHT + DOCK_GAP}
+      marginTop={isActive.as((active) =>
+        active ? activeMarginTop : BAR_HEIGHT + DOCK_GAP,
+      )}
       marginLeft={DOCK_MARGIN_LEFT}
       application={app}
       onNotifyVisible={(self) => {
-        if (self.visible) {
-          setMode("search");
-          reset();
-          entry?.set_text("");
-          entry?.grab_focus();
-        }
+        if (!self.visible) return;
+
+        reset();
+        entry?.set_text("");
+        entry?.grab_focus();
       }}
       $={withLayerBlur((self) => {
-        win = self;
-        const keys = new Gtk.EventControllerKey();
-        keys.connect("key-pressed", (_self, keyval) => {
-          switch (keyval) {
+        window = self;
+
+        const controller = new Gtk.EventControllerKey();
+
+        controller.connect("key-pressed", (_, key) => {
+          switch (key) {
             case Gdk.KEY_Escape:
               self.visible = false;
               return true;
@@ -121,15 +131,14 @@ export default function LauncherWindow({ monitor }: LauncherWindowProps) {
               return true;
             case Gdk.KEY_BackSpace:
               if (mode.peek() !== "search" && !entry?.text) {
-                setMode("search");
-                setText("");
+                reset();
               }
               return false;
             default:
               return false;
           }
         });
-        self.add_controller(keys);
+        self.add_controller(controller);
       })}
     >
       <box
@@ -152,77 +161,29 @@ export default function LauncherWindow({ monitor }: LauncherWindowProps) {
             />
             <image
               iconName="utilities-terminal-symbolic"
-              class={mode.as((current) =>
-                current === "hash" ? dangerIconClass : accentIconClass,
-              )}
-              visible={mode.as(
-                (current) => current === "dollar" || current === "hash",
-              )}
+              class={accentIconClass}
+              visible={mode.as((current) => current === "exec")}
             />
             <image
               iconName="accessories-calculator-symbolic"
               class={accentIconClass}
-              visible={mode.as((current) => current === "equals")}
+              visible={mode.as((current) => current === "calc")}
             />
           </box>
           <box hexpand>
             <entry
+              text={text}
               class={entryFieldClass(
-                mode.as((current) => current === "equals" && "calc"),
+                mode.as((current) => current === "calc" && "calc"),
               )}
               hexpand
-              placeholderText={mode.as((current) => PLACEHOLDER[current])}
+              placeholderText={mode.as((current) => MODE_PLACEHOLDER[current])}
               $={(self: Gtk.Entry) => (entry = self)}
               onNotifyText={(self) => {
-                const typed = self.text;
-                const currentMode = mode.peek();
-
-                if (
-                  currentMode === "search" &&
-                  (typed.startsWith("$") ||
-                    typed.startsWith("#") ||
-                    typed.startsWith("="))
-                ) {
-                  const prefix = typed[0] as "$" | "#" | "=";
-                  const rest = typed.slice(1);
-                  const newMode =
-                    prefix === "$"
-                      ? "dollar"
-                      : prefix === "#"
-                        ? "hash"
-                        : "equals";
-                  setMode(newMode);
-                  self.set_text(rest);
-                  self.set_position(-1);
-                  self.set_alignment(newMode === "equals" ? 1 : 0);
-                  setText(prefix + rest);
-                  return;
-                }
-
-                const prefix =
-                  currentMode === "dollar"
-                    ? "$"
-                    : currentMode === "hash"
-                      ? "#"
-                      : currentMode === "equals"
-                        ? "="
-                        : "";
-                setText(prefix + typed);
+                update(self.text);
+                self.set_position(-1);
               }}
               onActivate={runSelected}
-            />
-          </box>
-          <box visible={mode.as((current) => current === "equals")}>
-            <label label="=" class={calcGlyphClass} />
-          </box>
-          <box
-            class={calcResultBoxClass}
-            visible={mode.as((current) => current === "equals")}
-          >
-            <label
-              label={calcResult.as((result) => result ?? "0")}
-              class={calcResultClass}
-              xalign={0.5}
             />
           </box>
         </box>
@@ -234,7 +195,7 @@ export default function LauncherWindow({ monitor }: LauncherWindowProps) {
                 result={result}
                 selected={createComputed(() => index() === selectedIndex())}
                 onRun={() => {
-                  runResult(result);
+                  launch(result);
                   app.get_window("launcher")!.visible = false;
                 }}
               />
@@ -247,14 +208,14 @@ export default function LauncherWindow({ monitor }: LauncherWindowProps) {
 }
 
 type ResultRowProps = {
-  result: SearchResult;
+  result: LauncherResult;
   selected: Accessor<boolean>;
   onRun: () => void;
 };
 
 function ResultRow({ result, selected, onRun }: ResultRowProps) {
   const subtitle = resultSubtitle(result);
-  const icon = resultIcon(result);
+  const icon = result.type !== "calc" && resultIcon(result);
 
   return (
     <button
@@ -264,10 +225,12 @@ function ResultRow({ result, selected, onRun }: ResultRowProps) {
       halign={Gtk.Align.FILL}
     >
       <box spacing={8} hexpand>
-        {typeof icon === "string" ? (
+        {result.type === "calc" ? (
+          <label label="=" class={calcRowGlyphClass} />
+        ) : typeof icon === "string" ? (
           <image iconName={icon} />
         ) : (
-          <image gicon={icon} />
+          <image gicon={icon as Gio.Icon} />
         )}
         <box orientation={Gtk.Orientation.VERTICAL} hexpand>
           <label
@@ -275,6 +238,7 @@ function ResultRow({ result, selected, onRun }: ResultRowProps) {
             halign={Gtk.Align.START}
             ellipsize={3}
             hexpand
+            class={result.type === "calc" ? calcAnswerClass : ""}
           />
           {subtitle && (
             <label
@@ -365,38 +329,42 @@ const fileIcon = (path: string): Gio.Icon => {
   return Gio.content_type_get_icon(contentType);
 };
 
-const resultIcon = (result: SearchResult): string | Gio.Icon => {
+const resultIcon = (
+  result: Exclude<LauncherResult, { type: "calc" }>,
+): string | Gio.Icon => {
   switch (result.type) {
     case "app":
       return result.app.iconName || "application-x-executable-symbolic";
     case "file":
       return fileIcon(result.path);
-    case "command":
-      return result.sudo
-        ? "dialog-password-symbolic"
-        : "utilities-terminal-symbolic";
+    case "exec":
+      return "utilities-terminal-symbolic";
   }
 };
 
-const resultTitle = (result: SearchResult): string => {
+const resultTitle = (result: LauncherResult): string => {
   switch (result.type) {
     case "app":
       return result.app.name;
     case "file":
       return result.path.split("/").pop() ?? result.path;
-    case "command":
-      return `${result.sudo ? "#" : "$"} ${result.cmd}`;
+    case "exec":
+      return `! ${result.command}`;
+    case "calc":
+      return result.value;
   }
 };
 
-const resultSubtitle = (result: SearchResult): string | false => {
+const resultSubtitle = (result: LauncherResult): string | false => {
   switch (result.type) {
     case "app":
       return result.app.description || false;
     case "file":
       return formatPath(result.path);
-    case "command":
-      return result.sudo ? "Run as root in a terminal" : "Run in a terminal";
+    case "exec":
+      return "Run in a terminal";
+    case "calc":
+      return "Press enter to copy.";
   }
 };
 
@@ -437,12 +405,6 @@ const accentIconClass = defineStyle({
   },
 })();
 
-const dangerIconClass = defineStyle({
-  style: {
-    color: palette.danger,
-  },
-})();
-
 const entryFieldClass = defineStyle({
   style: {
     background: "transparent",
@@ -455,33 +417,21 @@ const entryFieldClass = defineStyle({
   variants: {
     calc: {
       fontFamily: "monospace",
-      fontSize: 16,
     },
   },
 });
 
-const calcGlyphClass = defineStyle({
+const calcRowGlyphClass = defineStyle({
   style: {
-    color: alpha(palette.text, 0.5),
-    fontFamily: "monospace",
-    fontSize: 16,
-  },
-})();
-
-const calcResultClass = defineStyle({
-  style: {
-    color: palette.text,
+    color: palette.accent,
     fontFamily: "monospace",
     fontWeight: "bold",
-    fontSize: 16,
   },
 })();
 
-// ~2em (at the 16px calc font size above) of breathing room on each side
-// of the result, approximated in px since GTK CSS has no em unit.
-const calcResultBoxClass = defineStyle({
+const calcAnswerClass = defineStyle({
   style: {
-    padding: "0 32px",
+    fontFamily: "monospace",
   },
 })();
 
