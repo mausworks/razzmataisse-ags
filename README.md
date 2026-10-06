@@ -3,42 +3,44 @@
 A custom [Hyprland](https://hyprland.org) desktop shell built with
 [AGS](https://aylur.github.io/ags-docs/)/[Astal](https://aylur.github.io/astal/)
 and [gnim](https://github.com/aylur/gnim) — GTK4 widgets written in
-TypeScript/JSX, styled using CSS-in-JS from '@lib/css'.
+TypeScript/JSX, styled using CSS-in-JS from `@lib/css`. No XML, no Lua
+tables pretending to be UI, no fighting a theme engine — just components.
 
 ![Bar, calendar popover, and launcher panel](docs/shots/desktop-overview.png)
 
-This project emphasizes portability, ergonomics, and DX — nothing assumes
-*your* home directory, *your* username, or any other detail of your
-particular machine.
+This project is built to travel: nothing assumes *your* home directory,
+*your* username, or any other detail of your particular machine. Clone it,
+run the installer, and it's yours — no search-and-replace required.
 
-_Getting started is easy, and customizations are a breeze!_
+_Getting started is easy, and customizing it is even easier._
 
 ## What's in it
 
-- **Bar** ('src/widget/bar') — a top bar with workspace indicators, the
+- **Bar** (`src/widget/bar`) — a top bar with workspace indicators, the
   active window's title, a launcher button, and status pills for network,
   Bluetooth, volume, and the clock, each opening its own popover.
-- **Launcher** ('src/widget/launcher') — a 'SUPER + Space' launcher that docks
+- **Launcher** (`src/widget/launcher`) — a `SUPER + Space` launcher that docks
   below the bar and expands to a centered panel once you start typing.
   Fuzzy-searches installed apps, searches filenames and file contents under
-  '$HOME' via 'rg', shows themed per-file-type icons, supports
-  '!cmd' to run a one-off shell command in a terminal, and '=' to evaluate
-  arithmetic expressions, constants, and unit conversions (e.g. '=2 + 2' or
-  '=5 km to miles') via 'qalc', shown as a result row like any other match.
-- **@lib/css** ('src/lib/css') — a small CSS-in-JS layer purpose-built for
-  GTK4's CSS dialect: 'defineStyle' for reusable, variant-aware classes,
-  reactive 'cx(...)' composition driven by Accessors, plus helpers for
-  color ('alpha'), transforms, transitions, and GTK-specific properties. See
+  `$HOME` via `rg`, shows themed per-file-type icons, supports `!cmd` to run
+  a one-off shell command in a terminal, and `=` to evaluate arithmetic
+  expressions, constants, and unit conversions (e.g. `=2 + 2` or
+  `=5 km to miles`) via `qalc`, shown as a result row like any other match.
+- **@lib/css** (`src/lib/css`) — a small CSS-in-JS layer purpose-built for
+  GTK4's CSS dialect: `defineStyle` for reusable, variant-aware classes,
+  reactive `cx(...)` composition driven by Accessors, plus helpers for
+  color (`alpha`), transforms, transitions, and GTK-specific properties. See
   [@lib/css](#libcss) below.
 - **@lib/hyprland** — talks to Hyprland for things Astal doesn't cover
-  directly, e.g. per-surface compositor blur via 'layer_rule'.
+  directly, e.g. per-surface compositor blur via `layer_rule`.
 
 Visual and non-visual settings are split into two JSON files at the repo
-root: 'theme.json' (colors, transitions, sizing) and 'config.json' (search's
-grep command, ignored directories, ignored desktop entries), each bridged
-into 'src/' via '@theme'/'@config' since path aliases only cover 'src/'
-itself. Both are validated against JSON schemas in [schemas/](schemas/)
-(referenced via '$schema', for editor autocomplete and validation).
+root: `theme.json` (colors, transitions, sizing) and `config.json` (search
+roots, ignored globs/desktop entries), each bridged into `src/` via
+`@theme`/`@config` since path aliases only cover `src/` itself. Both are
+validated against JSON schemas in [schemas/](schemas/) (referenced via
+`$schema`, for editor autocomplete and validation) — so a typo in your
+config yells at you in your editor, not at 2am when the bar won't start.
 
 ## Requirements
 
@@ -46,19 +48,19 @@ itself. Both are validated against JSON schemas in [schemas/](schemas/)
 - [AGS](https://aylur.github.io/ags-docs/) (with GTK4/Astal)
 - Astal's GTK4 shell library, plus these Astal libraries specifically:
   AstalApps, AstalBluetooth, AstalHyprland, AstalNetwork, AstalWp. On
-  Arch's 'aylurs-gtk-shell' package these all come bundled together, but
+  Arch's `aylurs-gtk-shell` package these all come bundled together, but
   distros that package each Astal library separately (NixOS, notably)
   need every one of these listed explicitly, or you'll hit a runtime
   "Typelib file for namespace '...' (any version) not found" error the
   moment a widget that needs it renders.
 - [Bun](https://bun.sh)
-- [ripgrep](https://github.com/BurntSushi/ripgrep) ('rg') — used for the
+- [ripgrep](https://github.com/BurntSushi/ripgrep) (`rg`) — used for the
   launcher's file search (search roots and ignored globs are configurable
-  via 'config.json'; the binary itself is not)
-- [qalc](https://qalculate.github.io) ('libqalculate') — evaluates expressions
-  typed in the launcher's '=' calculator mode (constants, units/currency
+  via `config.json`; the binary itself is not)
+- [qalc](https://qalculate.github.io) (`libqalculate`) — evaluates expressions
+  typed in the launcher's `=` calculator mode (constants, units/currency
   conversion, etc.)
-- 'wl-clipboard' ('wl-copy') — copies a calculator result to the clipboard
+- `wl-clipboard` (`wl-copy`) — copies a calculator result to the clipboard
   when selected
 
 ## Getting started
@@ -67,7 +69,7 @@ itself. Both are validated against JSON schemas in [schemas/](schemas/)
 curl -fsSL https://raw.githubusercontent.com/mausworks/razzmataisse-ags/main/install.sh | sh
 ```
 
-Clones the repo into '~/.config/razzmataisse-ags' (where AGS expects it),
+Clones the repo into `~/.config/razzmataisse-ags` (where AGS expects it),
 then installs dependencies, generates GTK/Astal's TypeScript types, and
 runs lint + typecheck so you know right away if anything's actually wrong
 rather than finding out the first time you run it.
@@ -81,7 +83,7 @@ Already have a checkout? Run the same script from inside it instead:
 It's idempotent either way — safe to rerun any time (e.g. after pulling).
 
 Once installed, wire it into Hyprland's config (the new Lua config
-format — e.g. in 'autostart.lua'):
+format — e.g. in `autostart.lua`):
 
 ```lua
 hl.on("hyprland.start", function()
@@ -95,11 +97,12 @@ end)
 bun run dev
 ```
 
-'scripts/dev.sh' polls source files once a second and restarts 'ags run' on
+`scripts/dev.sh` polls source files once a second and restarts `ags run` on
 change — AGS has no built-in watch mode. While it's running, the bar is
 non-exclusive (doesn't reserve screen space) so restarts don't reshuffle
 your windows; it pushes the top monitor gap out by the bar's height instead,
-for the duration of the dev session.
+for the duration of the dev session. Edit, save, watch it reload — no
+"close everything and restart Hyprland" ritual required.
 
 Other scripts:
 
@@ -115,15 +118,16 @@ bun run gtk:typegen  # regenerate GTK/Astal GI type declarations
 
 TypeScript/JavaScript style is documented in
 [docs/style/typescript.md](docs/style/typescript.md) and enforced partly by
-a handful of project-specific ESLint rules in 'eslint-local-rules.mjs' (e.g.
-requiring defineStyle's variant scope, validating transform/transition
-values).
+a handful of project-specific ESLint rules in `eslint-local-rules.mjs` (e.g.
+requiring `defineStyle`'s variant scope, validating transform/transition
+values) — the boring rules live in config, so code reviews can talk about
+the interesting stuff.
 
 ## @lib/css
 
 GTK4's CSS dialect is close to the web's, but not identical (no flexbox or
-grid, extra GTK-only properties like '-gtk-icon-size', etc.), and widgets
-are styled via a 'class' prop rather than inline 'style='. '@lib/css' is a
+grid, extra GTK-only properties like `-gtk-icon-size`, etc.), and widgets
+are styled via a `class` prop rather than inline `style=`. `@lib/css` is a
 small CSS-in-JS layer built specifically around those constraints — define
 a class once at module scope, then compose it reactively per-instance.
 
@@ -173,13 +177,13 @@ const cx = defineStyle({
 });
 ```
 
-See 'src/lib/css/' for the rest — 'animation.ts' (keyframes), 'color.ts'
-('alpha'/'mix'/'shade'/...), 'units.ts' ('px'/'percent'/'deg'/...), and
-'gtk-extensions.ts' for GTK-only CSS properties.
+See `src/lib/css/` for the rest — `animation.ts` (keyframes), `color.ts`
+(`alpha`/`mix`/`shade`/...), `units.ts` (`px`/`percent`/`deg`/...), and
+`gtk-extensions.ts` for GTK-only CSS properties.
 
 ## Running it for real
 
-Launch the shell the same way 'ags run' normally would, pointed at the
+Launch the shell the same way `ags run` normally would, pointed at the
 entrypoint:
 
 ```sh
