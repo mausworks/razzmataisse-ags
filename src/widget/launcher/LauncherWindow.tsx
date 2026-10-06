@@ -80,8 +80,13 @@ export default function LauncherWindow({ monitor }: LauncherWindowProps) {
       layer={Astal.Layer.OVERLAY}
       keymode={Astal.Keymode.ON_DEMAND}
       anchor={isActive.as((active) =>
+        // Anchored to TOP only (no LEFT/RIGHT) centers horizontally while
+        // pinning the top edge, so the panel only grows downward as
+        // results come in instead of re-centering vertically on every
+        // height change (which shifts the input box underneath you while
+        // typing).
         active
-          ? Astal.WindowAnchor.NONE
+          ? Astal.WindowAnchor.TOP
           : Astal.WindowAnchor.TOP | Astal.WindowAnchor.LEFT,
       )}
       marginTop={BAR_HEIGHT + DOCK_GAP}
