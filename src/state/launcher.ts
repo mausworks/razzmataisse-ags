@@ -94,10 +94,10 @@ const TOP_N = 10;
 const byFrequency = (left: LauncherResult, right: LauncherResult) =>
   (frequents[right.id] ?? 0) - (frequents[left.id] ?? 0);
 
-const topResults = (): LauncherResult[] =>
+const getTopResults = (): LauncherResult[] =>
   Apps.get_list()
     .filter((app) => !isIgnoredApp(app))
-    .map((app): LauncherResult => ({ type: "app", id: app.entry, app }))
+    .map((app) => ({ type: "app", id: app.entry, app }) as AppResult)
     .sort(byFrequency)
     .slice(0, TOP_N);
 
@@ -105,7 +105,8 @@ const searchApps = (query: string): LauncherResult[] =>
   Apps.fuzzy_query(query)
     .filter((app) => !isIgnoredApp(app))
     .slice(0, TOP_N)
-    .map((app) => ({ type: "app", id: app.entry, app }) as const);
+    .map((app) => ({ type: "app", id: app.entry, app }) as AppResult)
+    .sort(byFrequency);
 
 export const HOME = GLib.get_home_dir();
 
@@ -193,7 +194,7 @@ export const launch = (result: LauncherResult) => {
 
 export const createLauncherModel = () => {
   const [text, setText] = createState("");
-  const [results, setResults] = createState<LauncherResult[]>(topResults());
+  const [results, setResults] = createState<LauncherResult[]>(getTopResults());
   const [mode, setMode] = createState<LauncherMode>("search");
 
   let debounceTimer: Timer | null = null;
@@ -214,6 +215,11 @@ export const createLauncherModel = () => {
   };
 
   const handleSearch = (query: string) => {
+    if (!query) {
+      setResults(getTopResults());
+      return;
+    }
+
     const id = ++generation;
 
     setResults(searchApps(query));
@@ -235,23 +241,17 @@ export const createLauncherModel = () => {
 
     if (newMode === "calc") {
       handleCalc(newText.trim());
+    } else if (newMode === "search") {
+      handleSearch(newText);
     } else if (newMode === "exec") {
       const command = parseCommand(newText);
 
       setResults(command ? [command] : []);
-    } else {
-      handleSearch(newText);
     }
   };
 
   const update = (input: string) => {
     debounceTimer?.cancel();
-
-    if (!input) {
-      setText("");
-      setResults(topResults());
-      return;
-    }
 
     if (mode.peek() === "search") {
       const newMode = parseLauncherMode(input);
