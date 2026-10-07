@@ -169,4 +169,7 @@ export type CX<V extends PropertyKey> = {
  * allows falsy values, `Accessor`s, and nested arrays of either, matching
  * `cx()` itself.
  */
-export type CXProp<T> = T extends CX<infer V> ? VariantArgument<V> : never;
+export type CXProp<T> =
+  T extends CX<infer V>
+    ? VariantArgument<V> | VariantAccessorArgument<V>
+    : never;

@@ -1,6 +1,6 @@
 import app from "ags/gtk4/app";
 
-import Pill from "./Pill";
+import BarButton from "./BarButton";
 
 export type LauncherButtonProps = {
   visible?: boolean;
@@ -11,12 +11,12 @@ export default function LauncherButton({
   visible = true,
 }: LauncherButtonProps) {
   return (
-    <Pill
+    <BarButton
       variant="icon"
       visible={visible}
       onClicked={() => app.toggle_window("launcher")}
     >
       <image iconName="go-next-symbolic" />
-    </Pill>
+    </BarButton>
   );
 }

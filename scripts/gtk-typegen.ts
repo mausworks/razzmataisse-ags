@@ -112,6 +112,8 @@ const writeUnionType = (
   GLib.file_set_contents(path, lines.join("\n") + "\n");
 };
 
+const isSymbolicIcon = (name: string) => name.endsWith("-symbolic");
+
 app.start({
   instanceName: "gtk-typegen",
   main: () => {
@@ -131,8 +133,9 @@ app.start({
     ).sort();
 
     const iconTheme = Gtk.IconTheme.get_for_display(Gdk.Display.get_default()!);
+
     const icons = [...new Set(iconTheme.get_icon_names())]
-      .filter((name) => name.endsWith("-symbolic"))
+      .filter(isSymbolicIcon)
       .sort();
 
     writeUnionType(
@@ -149,7 +152,7 @@ app.start({
 
     writeUnionType(
       "../src/lib/gtk/icons.d.ts",
-      "IconName",
+      "SymbolicIconName",
       "/**\n" +
         " * Symbolic icon names available in the active icon theme, per\n" +
         " * `Gtk.IconTheme.get_for_display(...).get_icon_names()`. This is a\n" +
@@ -165,7 +168,7 @@ app.start({
       GENERATED_HEADER +
         "\n" +
         'export type { ThemeColor } from "./colors";\n' +
-        'export type { IconName } from "./icons";\n' +
+        'export type { SymbolicIconName } from "./icons";\n' +
         'export type { NiceWidgetProps } from "./types";\n',
     );
 

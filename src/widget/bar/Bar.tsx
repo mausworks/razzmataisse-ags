@@ -6,11 +6,11 @@ import theme from "@theme";
 import { Astal, Gdk } from "ags/gtk4";
 import app from "ags/gtk4/app";
 
-import BluetoothButton from "./BluetoothButton";
+import AudioControls from "./AudioControls";
+import BluetoothControls from "./BluetoothControls";
 import Clock from "./Clock";
 import LauncherButton from "./LauncherButton";
-import VolumeButton from "./VolumeButton";
-import NetworkButton from "./WifiButton";
+import NetworkControls from "./NetworkControls";
 import WindowTitle from "./WindowTitle";
 import WorkspaceControls from "./WorkspaceControls";
 
@@ -51,9 +51,9 @@ export default function Bar({ monitor }: BarProps) {
           <WindowTitle {...config.bar.windowTitle} />
         </box>
         <box $type="end" spacing={4}>
-          <NetworkButton {...config.bar.wifi} />
-          <BluetoothButton {...config.bar.bluetooth} />
-          <VolumeButton {...config.bar.audio} />
+          <NetworkControls {...config.bar.wifi} />
+          <BluetoothControls {...config.bar.bluetooth} />
+          <AudioControls {...config.bar.audio} />
           <Clock {...config.bar.clock} calendar={config.bar.calendar} />
         </box>
       </centerbox>

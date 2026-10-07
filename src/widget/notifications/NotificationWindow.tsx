@@ -1,5 +1,6 @@
 import { alpha, defineStyle, lighter } from "@lib/css";
 import { withLayerBlur } from "@lib/hyprland";
+import { supportedIcon } from "@lib/icon-theme";
 import { notificationWorkspaceIds } from "@lib/notifications";
 import theme from "@theme";
 import { createBinding, createComputed, For } from "ags";
@@ -10,6 +11,8 @@ import AstalNotifd from "gi://AstalNotifd?version=0.1";
 
 const Notifd = AstalNotifd.get_default();
 const Hyprland = AstalHyprland.get_default()!;
+
+const { palette } = theme.bar;
 
 /**
  * A notification whose app has no open window at all (a system notification
@@ -26,8 +29,6 @@ const isOnActiveWorkspace = (
   const ids = notificationWorkspaceIds(notification, clients);
   return ids.length === 0 || ids.includes(activeWorkspace.id);
 };
-
-const { palette } = theme.bar;
 
 /** Matches `Bar.tsx`'s own bar height -- keeps the docked position flush. */
 const BAR_HEIGHT = 34;
@@ -117,7 +118,9 @@ function NotificationCard({ notification }: NotificationCardProps) {
     <button class={cardClass} onClicked={() => notification.dismiss()}>
       <box spacing={8}>
         <image
-          iconName={appIcon.as((icon) => icon || "dialog-information-symbolic")}
+          iconName={appIcon.as(
+            (icon) => supportedIcon(icon) ?? "dialog-information-symbolic",
+          )}
           valign={Gtk.Align.START}
         />
         <box orientation={Gtk.Orientation.VERTICAL} hexpand>

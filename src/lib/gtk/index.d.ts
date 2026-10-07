@@ -2,5 +2,5 @@
 // Re-run with scripts/gtk-typegen.sh whenever the theme or icon theme changes.
 
 export type { ThemeColor } from "./colors";
-export type { IconName } from "./icons";
+export type { SymbolicIconName } from "./icons";
 export type { NiceWidgetProps } from "./types";

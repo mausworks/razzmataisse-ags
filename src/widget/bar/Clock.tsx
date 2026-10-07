@@ -2,8 +2,9 @@ import { defineStyle, type DurationString, ms } from "@lib/css";
 import { createPoll } from "ags/time";
 import { For } from "gnim";
 
-import BarPopover, { BarCalendar } from "./BarPopover";
-import { MenuPill } from "./Pill";
+import { BarMenuButton } from "./BarButton";
+import BarCalendar from "./BarCalendar";
+import BarPopover from "./BarPopover";
 
 const labelClass = defineStyle({
   style: {
@@ -43,7 +44,7 @@ export default function Clock({
   ).as((value) => value.split(" | "));
 
   return (
-    <MenuPill variant="text" visible={visible}>
+    <BarMenuButton variant="text" visible={visible}>
       <box spacing={8}>
         <For each={fullDate} id={(part) => part}>
           {(part) => <label label={part} class={labelClass} />}
@@ -54,6 +55,6 @@ export default function Clock({
           <BarCalendar showWeekNumbers={showWeekNumbers} />
         </BarPopover>
       )}
-    </MenuPill>
+    </BarMenuButton>
   );
 }
