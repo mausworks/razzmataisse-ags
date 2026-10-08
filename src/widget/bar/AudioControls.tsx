@@ -1,6 +1,6 @@
 import { supportedIcon } from "@lib/icon-theme";
 import { shortest } from "@lib/string";
-import { createBinding, createComputed, createEffect, For } from "ags";
+import { createBinding, createComputed, For } from "ags";
 import { Gtk } from "ags/gtk4";
 import AstalWp from "gi://AstalWp?version=0.1";
 import Pango from "gi://Pango";
@@ -12,17 +12,13 @@ import BarPopover, {
   BarPopoverListItem,
 } from "./BarPopover";
 
-export type AudioControlsProps = {
+export interface AudioControlsProps {
   visible?: boolean;
-};
+}
 
 export default function AudioControls({ visible = true }: AudioControlsProps) {
   const { icon, volume, hasSpeaker, speakers } = createAudioModel();
   const { toggleMute, setVolume, selectSpeaker } = createAudioActions();
-
-  createEffect(() => {
-    console.log(volume());
-  });
 
   return (
     <BarMenuButton
