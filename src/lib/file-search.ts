@@ -9,7 +9,20 @@ export type SearchOptions = {
 export type GlobSearch = SearchOptions & { glob: string };
 export type ContentSearch = SearchOptions & { content: string };
 
-export const fileSearch = async ({
+/**
+ * Runs `rg` once per root, from inside that root: rg anchors `-g` globs
+ * containing a `/` (e.g. `!.config/foo/**`) to its working directory.
+ */
+const searchRoots = (roots: string[], args: string[]) =>
+  Promise.all(
+    roots.map((root) =>
+      execAsync(["env", "-C", root, "rg", ...args, root]).catch(() => ""),
+    ),
+  ).then((outputs) =>
+    outputs.flatMap((lines) => lines.split("\n")).filter(Boolean),
+  );
+
+export const fileSearch = ({
   ignoreGlobs = [],
   roots,
   hidden = true,
@@ -19,29 +32,21 @@ export const fileSearch = async ({
   const flags = [hidden ? "--hidden" : null].filter(Boolean) as string[];
 
   if ("glob" in options) {
-    return execAsync([
-      "rg",
+    return searchRoots(roots, [
       ...flags,
       "--files",
       "--iglob",
       options.glob,
       ...globArgs,
-      ...roots,
-    ])
-      .catch(() => "")
-      .then((lines) => lines.split("\n").filter(Boolean));
+    ]);
   } else {
-    return execAsync([
-      "rg",
+    return searchRoots(roots, [
       ...flags,
       "--files-with-matches",
       "--ignore-case",
       "--max-count=1",
       options.content,
       ...globArgs,
-      ...roots,
-    ])
-      .catch(() => "")
-      .then((lines) => lines.split("\n").filter(Boolean));
+    ]);
   }
 };
