@@ -1,5 +1,4 @@
-import { alpha, defineStyle, lighter } from "@lib/css";
-import { withLayerBlur } from "@lib/hyprland";
+import { alpha, backdropBlur, defineStyle, lighter } from "@lib/css";
 import { supportedIcon } from "@lib/icon-theme";
 import { notificationWorkspaceIds } from "@lib/notifications";
 import theme from "@theme";
@@ -76,7 +75,6 @@ export default function NotificationWindow({
       marginTop={BAR_HEIGHT + DOCK_GAP}
       marginRight={DOCK_MARGIN_RIGHT}
       application={app}
-      $={withLayerBlur()}
     >
       <box
         orientation={Gtk.Orientation.VERTICAL}
@@ -153,6 +151,7 @@ const windowClass = defineStyle({
 const cardClass = defineStyle({
   style: {
     background: palette.activeBackground,
+    backdropFilter: backdropBlur(),
     color: palette.text,
     border: `1px solid ${alpha(palette.text, 0.1)}`,
     borderRadius: 12,

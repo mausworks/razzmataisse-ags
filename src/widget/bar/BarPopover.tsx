@@ -1,4 +1,4 @@
-import { alpha, defineStyle } from "@lib/css";
+import { alpha, backdropBlur, defineStyle } from "@lib/css";
 import theme from "@theme";
 import { Gtk } from "ags/gtk4";
 
@@ -41,6 +41,7 @@ const popoverClass = defineStyle({
     boxShadow: "none",
     "& > contents": {
       background: palette.activeBackground,
+      backdropFilter: backdropBlur(),
       color: palette.text,
       padding: 0,
       margin: 0,

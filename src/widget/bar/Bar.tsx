@@ -1,7 +1,7 @@
 import config from "@config";
-import { defineStyle } from "@lib/css";
+import { backdropBlur, defineStyle } from "@lib/css";
 import { IS_DEV } from "@lib/dev";
-import { withLayerBlur } from "@lib/hyprland";
+import { withPopupBlur } from "@lib/hyprland";
 import theme from "@theme";
 import { Astal, Gdk } from "ags/gtk4";
 import app from "ags/gtk4/app";
@@ -40,7 +40,7 @@ export default function Bar({ monitor }: BarProps) {
       exclusivity={BAR_EXCLUSIVITY}
       anchor={TOP | LEFT | RIGHT}
       application={app}
-      $={withLayerBlur({ blurPopups: true })}
+      $={withPopupBlur()}
     >
       <centerbox class={containerClass}>
         <box $type="start" spacing={8}>
@@ -73,6 +73,7 @@ const containerClass = defineStyle({
   style: {
     padding: "4px 12px",
     background: palette.background,
+    backdropFilter: backdropBlur(),
     transition: `background ${transition.in}`,
     color: palette.text,
     "&:hover": {

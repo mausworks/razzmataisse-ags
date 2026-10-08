@@ -1,6 +1,7 @@
 import Lua from "@lib/lua";
 import type { Astal } from "ags/gtk4";
 import AstalHyprland from "gi://AstalHyprland";
+import GLib from "gi://GLib?version=2.0";
 
 const Hyprland = AstalHyprland.get_default()!;
 
@@ -26,81 +27,56 @@ const evalHyprlandLua = (lua: string) => {
   if (reply !== "ok") console.error(`hyprctl eval failed: ${lua}\n${reply}`);
 };
 
-export type LayerBlurOptions = {
-  /**
-   * Whenever the surface itself is fairly transparent (as our panels are),
-   * blur fades out along with the alpha instead of showing through it --
-   * this makes blur ignore alpha below the given threshold instead.
-   * Defaults to `0.1`.
-   */
+/**
+ * Runs `argv` as a child of Hyprland rather than the shell, so it keeps
+ * running after the shell exits. Fire-and-forget: failures aren't reported.
+ *
+ * @example
+ * ```ts
+ * execDetached(["xdg-open", "/path/to/file"]);
+ * ```
+ */
+export const execDetached = (argv: readonly string[]) =>
+  Hyprland.dispatch(
+    "hl.dsp.exec_cmd",
+    Lua.stringify(argv.map((arg) => GLib.shell_quote(arg)).join(" ")),
+  );
+
+export type PopupBlurOptions = {
+  /** Blur skips pixels with alpha below this threshold. Defaults to `0.1`. */
   ignoreAlpha?: number;
-  /**
-   * Blur against a fixed snapshot of the desktop background instead of
-   * whatever's actually layered behind the surface -- cheaper, but can
-   * look wrong wherever another blurred layer would otherwise show
-   * through. Defaults to `false`.
-   */
-  xray?: boolean;
-  /** Also blur this layer's own popups (e.g. tooltips). Defaults to `false`. */
-  blurPopups?: boolean;
 };
 
-/**
- * GTK4 has no `backdrop-filter`/blur-behind-the-element at all -- only a
- * `filter` that blurs a widget's own rendered content, not what's behind
- * it. Layer-shell surfaces (unlike regular translucent windows, which blur
- * automatically when `decoration.blur.enabled` is on) need an explicit
- * `layer_rule` to opt into Hyprland's compositor-side blur instead.
- *
- * Confirmed idempotent server-side (re-registering the same `name`
- * repeatedly is a no-op, not an error) -- `withLayerBlur` below still
- * guards against calling this redundantly, to skip the IPC round-trip
- * rather than rely on that.
- */
-const enableLayerBlur = (
+/** Hyprland only blurs layer popups via this rule; `backdropFilter` can't. */
+const enablePopupBlur = (
   namespace: string,
-  {
-    ignoreAlpha = 0.1,
-    xray = false,
-    blurPopups = false,
-  }: LayerBlurOptions = {},
+  { ignoreAlpha = 0.1 }: PopupBlurOptions = {},
 ) =>
   evalHyprlandLua(
     `hl.layer_rule(${Lua.stringify({
-      name: `blur-${namespace}`,
+      name: `blur-popups-${namespace}`,
       match: { namespace },
-      blur: true,
       ignore_alpha: ignoreAlpha,
-      xray,
-      blur_popups: blurPopups,
+      blur_popups: true,
     })})`,
   );
 
 /**
- * Wraps a `<window>`'s own `$` ref callback so blur is registered exactly
- * once -- tied to that window's actual GTK construction (its `$` fires
- * once per real widget, not once per time the enclosing component
- * function happens to run), and guarded by `blurredNamespaces` on top of
- * that regardless, in case something ever makes those not one-to-one
- * (e.g. the same namespace reused across monitors). Reads the namespace
- * off `self` (already set by the time `$` fires, since it's filled from
- * the `<window namespace="...">` prop) rather than taking it as a second
- * source of truth that could drift from what the window actually has.
+ * Blurs the popups (e.g. popovers) of a layer-shell window, composed with
+ * the window's own `$` ref callback. The popups' own `backdropFilter`
+ * limits the blur to their visible panels.
  *
  * @example
  * ```tsx
- * <window namespace="bar" $={withLayerBlur()}>
- * // or composed with the window's own ref logic:
- * <window namespace="launcher" $={withLayerBlur((self) => { ... })}>
+ * <window namespace="bar" $={withPopupBlur()}>
  * ```
- *
  */
-export function withLayerBlur<W extends Astal.Window>(
-  options?: LayerBlurOptions,
+export function withPopupBlur<W extends Astal.Window>(
+  options?: PopupBlurOptions,
   ref?: (self: W) => void,
 ) {
   return (self: W) => {
-    enableLayerBlur(self.namespace, options);
+    enablePopupBlur(self.namespace, options);
 
     ref?.(self);
   };
