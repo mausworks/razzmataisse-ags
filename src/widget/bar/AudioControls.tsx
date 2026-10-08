@@ -96,6 +96,34 @@ const getSpeakerIcon = ({ name, icon, device }: AstalWp.Endpoint) => {
   }
 };
 
+const isPreferredSpeaker = (
+  candidate: AstalWp.Endpoint,
+  current: AstalWp.Endpoint,
+) =>
+  candidate.isDefault !== current.isDefault
+    ? candidate.isDefault
+    : candidate.serial > current.serial;
+
+/**
+ * WirePlumber leaves a stale sink behind each time an HDMI monitor
+ * reconnects, all sharing the same `path`. Keeps one per `path`: the
+ * default if it's among them, otherwise the newest.
+ */
+const dedupeSpeakers = (speakers: AstalWp.Endpoint[]) => {
+  const byPath = new Map<string, AstalWp.Endpoint>();
+
+  for (const speaker of speakers) {
+    const key = speaker.path ?? String(speaker.id);
+    const current = byPath.get(key);
+
+    if (!current || isPreferredSpeaker(speaker, current)) {
+      byPath.set(key, speaker);
+    }
+  }
+
+  return [...byPath.values()];
+};
+
 const createAudioModel = () => {
   const wp = AstalWp.get_default()!;
 
@@ -110,7 +138,7 @@ const createAudioModel = () => {
     (volumeValue) => volumeValue ?? 0,
   );
   const speakers = createBinding(wp.audio, "speakers").as((list) =>
-    (list ?? []).sort((left, right) =>
+    dedupeSpeakers(list ?? []).sort((left, right) =>
       left.isDefault === right.isDefault ? 0 : left.isDefault ? -1 : 1,
     ),
   );
@@ -129,25 +157,19 @@ const createAudioModel = () => {
 };
 
 const createAudioActions = () => {
-  const { defaultSpeaker } = AstalWp.get_default()!;
+  const wp = AstalWp.get_default()!;
 
   const toggleMute = () => {
-    if (!defaultSpeaker) return;
-
-    defaultSpeaker.mute = !defaultSpeaker.mute;
+    const speaker = wp.defaultSpeaker;
+    if (speaker) speaker.mute = !speaker.mute;
   };
 
   const setVolume = (value: number) => {
-    if (!defaultSpeaker) return;
-
-    defaultSpeaker.volume = value;
+    const speaker = wp.defaultSpeaker;
+    if (speaker) speaker.volume = value;
   };
 
-  // Setting `isDefault = false` is a documented no-op (AstalWp only lets
-  // you *elect* a new default, not un-elect the current one) -- selecting
-  // a different speaker here is itself what demotes the old one.
   const selectSpeaker = (speaker: AstalWp.Endpoint) => {
-    defaultSpeaker.isDefault = false;
     speaker.isDefault = true;
   };
 
