@@ -19,7 +19,6 @@
     }
   },
   "search": {
-    "grepCommand": "rg",
     "roots": ["~"],
     "ignoredDesktopEntries": [
       "*cmake*",
@@ -33,7 +32,9 @@
     "ignoreGlobs": [
       "!.git",
       "!.cache",
-      "!.local/share/Trash/**",
+      "!.local/share/Trash/**/*",
+      "!.claude",
+      "!.config/Claude/**",
       "!node_modules",
       "!.npm",
       "!.cargo",

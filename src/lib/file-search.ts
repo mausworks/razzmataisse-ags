@@ -37,8 +37,8 @@ export const fileSearch = async ({
       "--files-with-matches",
       "--ignore-case",
       "--max-count=1",
-      ...globArgs,
       options.content,
+      ...globArgs,
       ...roots,
     ])
       .catch(() => "")
