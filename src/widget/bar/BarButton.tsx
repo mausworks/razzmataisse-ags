@@ -1,4 +1,10 @@
-import { alpha, type CXProp, defineStyle } from "@lib/css";
+import {
+  alpha,
+  type CXProp,
+  defineAnimation,
+  defineStyle,
+  transitions,
+} from "@lib/css";
 import theme from "@theme";
 import type { Accessor, Node } from "ags";
 import { Gtk } from "ags/gtk4";
@@ -32,6 +38,27 @@ export function BarMenuButton({ variant, ...props }: BarMenuButtonProps) {
   );
 }
 
+const loadingAnimation = defineAnimation({
+  defaults: {
+    duration: "0.8s",
+    iterationCount: "infinite",
+    easing: "ease",
+    direction: "alternate",
+    fillMode: "both",
+  },
+  keyframes: {
+    from: {
+      opacity: 1,
+      background: alpha(palette.accent, 0.1),
+      color: palette.accent,
+    },
+    to: {
+      background: "transparent",
+      color: alpha(palette.text, 0.8),
+    },
+  },
+});
+
 const cx = defineStyle({
   style: {
     "&:not(menubutton), & > button": {
@@ -44,6 +71,10 @@ const cx = defineStyle({
       border: "none",
       color: alpha(palette.text, 0.8),
       boxShadow: "0 0 0 0 transparent",
+      transition: transitions({
+        background: { duration: "200ms", easing: "linear" },
+        color: { duration: "200ms", easing: "linear" },
+      }),
     },
     "&:not(menubutton):hover, & > button:hover": {
       background: alpha(palette.accent, 0.08),
@@ -79,6 +110,9 @@ const cx = defineStyle({
         background: alpha(palette.accent, 0.1),
         color: palette.accent,
       },
+    },
+    loading: {
+      animation: loadingAnimation(),
     },
   },
 });

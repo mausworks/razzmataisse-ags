@@ -1,12 +1,19 @@
 import {
   connectBluetoothDevice,
   disconnectBluetoothDevice,
-  monitorBatteryLevel,
 } from "@lib/bluetooth";
+import { monitorBatteryLevel } from "@lib/bluetooth-battery";
 import { defineStyle } from "@lib/css";
 import { supportedIcon } from "@lib/icon-theme";
 import theme from "@theme";
-import { Accessor, createBinding, createComputed, For } from "ags";
+import {
+  Accessor,
+  createBinding,
+  createComputed,
+  createEffect,
+  createState,
+  For,
+} from "ags";
 import { Gtk } from "ags/gtk4";
 import AstalBluetooth from "gi://AstalBluetooth?version=0.1";
 
@@ -104,25 +111,45 @@ export default function BluetoothControls({
 
 interface DeviceListItemProps {
   device: AstalBluetooth.Device;
-  onClicked: (device: AstalBluetooth.Device) => void;
+  onClicked: (device: AstalBluetooth.Device) => Promise<void>;
 }
 
 function DeviceOption({ device, onClicked }: DeviceListItemProps) {
   const isConnected = createBinding(device, "connected");
+  const isConnecting = createBinding(device, "connecting");
+  const [loading, setLoading] = createState(isConnecting());
   const alias = createBinding(device, "alias");
   const battery = monitorBatteryLevel(device);
   const icon = createBinding(device, "icon").as(
     (icon) => supportedIcon(`${icon}-symbolic`, icon) ?? "bluetooth-symbolic",
   );
 
+  createEffect(() => {
+    if (isConnecting()) {
+      setLoading(true);
+    } else {
+      isConnected();
+      setLoading(false);
+    }
+  });
+
   return (
     <BarPopoverListItem
-      variant={isConnected.as((active) => active && "active")}
-      onClicked={() => onClicked(device)}
+      variant={[
+        isConnected.as((is) => is && "active"),
+        loading.as((is) => is && "loading"),
+      ]}
+      onClicked={() => {
+        setLoading(true);
+        onClicked(device).finally(() => setLoading(false));
+      }}
     >
       <image iconName={icon} />
       <label label={alias} hexpand halign={Gtk.Align.START} />
-      {isConnected() && <BatteryIcon battery={battery} />}
+      <BatteryIcon
+        battery={battery}
+        visible={createComputed(() => !loading() && isConnected())}
+      />
     </BarPopoverListItem>
   );
 }
