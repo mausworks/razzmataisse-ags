@@ -18,6 +18,7 @@ export * from "./animation";
 export * from "./background";
 export * from "./border";
 export * from "./color";
+export * from "./filter";
 export * from "./font";
 export * from "./gtk-extensions";
 export { inlineCSS } from "./provider";

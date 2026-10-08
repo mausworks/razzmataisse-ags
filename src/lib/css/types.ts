@@ -3,6 +3,7 @@ import type { Accessor } from "ags";
 import type { AnimatableProperties, AnimationProperties } from "./animation";
 import type { BackgroundProperties } from "./background";
 import type { BorderProperties, OutlineProperties } from "./border";
+import type { FilterString } from "./filter";
 import type { FontProperties } from "./font";
 import type { GTKCssProperties } from "./gtk-extensions";
 import type { TextProperties } from "./text";
@@ -44,7 +45,9 @@ export type SizingProperties = Partial<{
  */
 export type EffectProperties = Partial<{
   opacity: Fraction;
-  filter: string;
+  filter: FilterString | ({} & string);
+  /** Use `backdropBlur()` to blur what's behind the widget. */
+  backdropFilter: FilterString | ({} & string);
   boxShadow: string;
 }>;
 
