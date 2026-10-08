@@ -3,10 +3,11 @@ import { evaluateMathExpression } from "@lib/calculator";
 import { copyToClipboard } from "@lib/clipboard";
 import { fileSearch } from "@lib/file-search";
 import { globToRegExp } from "@lib/glob";
+import { execDetached } from "@lib/hyprland";
 import { createState } from "ags";
-import { execAsync } from "ags/process";
 import { timeout, Timer } from "ags/time";
 import AstalApps from "gi://AstalApps?version=0.1";
+import GioUnix from "gi://GioUnix?version=2.0";
 import GLib from "gi://GLib?version=2.0";
 
 const { roots, ignoreGlobs, ignoredDesktopEntries } = config.search;
@@ -158,30 +159,29 @@ const parseCommand = (command: string): LauncherResult | null => {
   return command ? { type: "exec", id: `cmd:${command}`, command } : null;
 };
 
-const launchFile = (path: string) => {
-  execAsync(["xdg-open", path]).catch((error) =>
-    console.error(`failed to open ${path}:`, error),
-  );
+// `app.app` is broken in AstalApps' GIR, hence the lookup via `entry`.
+const launchApp = (app: AstalApps.Application) => {
+  const path = GioUnix.DesktopAppInfo.new(app.entry)?.get_filename();
+
+  if (path) execDetached(["gio", "launch", path]);
+  else console.error(`no desktop file for ${app.name}`);
 };
 
-const launchCommand = (command: string) => {
-  execAsync([
+const launchCommand = (command: string) =>
+  execDetached([
     "kitty",
     "sh",
     "-c",
     `${command}; echo; echo "[exited $?]"; exec $SHELL`,
-  ]).catch((error) => {
-    console.error(`failed to run '${command}':`, error);
-  });
-};
+  ]);
 
 export const launch = (result: LauncherResult) => {
   recordFrequency(result.id);
 
   if (result.type === "app") {
-    result.app.launch();
+    launchApp(result.app);
   } else if (result.type === "file") {
-    launchFile(result.path);
+    execDetached(["xdg-open", result.path]);
   } else if (result.type === "exec") {
     launchCommand(result.command);
   } else if (result.type === "calc") {

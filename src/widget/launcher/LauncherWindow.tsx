@@ -1,5 +1,4 @@
-import { alpha, defineStyle } from "@lib/css";
-import { withLayerBlur } from "@lib/hyprland";
+import { alpha, backdropBlur, defineStyle } from "@lib/css";
 import {
   createLauncherModel,
   HOME,
@@ -38,11 +37,20 @@ const MODE_PLACEHOLDER: Record<LauncherMode, string> = {
 // it, which is exactly the "grows from the center" jumpiness this is
 // replacing: active mode should settle near the center once and then
 // only ever grow downward from there.
-const ACTIVE_TOP_FRACTION = 0.2;
+const ACTIVE_TOP_FRACTION = 0.4;
 
 export default function LauncherWindow({ monitor }: LauncherWindowProps) {
   const { text, mode, results, update, reset } = createLauncherModel();
-  const isActive = text.as((value) => value.length > 0);
+  const [isActive, setIsActive] = createState(false);
+  const [isOpen, setIsOpen] = createState(false);
+
+  let window: Gtk.Window | undefined;
+
+  const hide = () => {
+    if (window) window.visible = false;
+  };
+
+  LauncherBackdrop({ monitor, visible: isOpen, onClick: hide });
 
   const activeMarginTop = Math.round(
     monitor.get_geometry().height * ACTIVE_TOP_FRACTION,
@@ -65,9 +73,6 @@ export default function LauncherWindow({ monitor }: LauncherWindowProps) {
     );
   };
 
-  let entry: Gtk.Entry | undefined;
-  let window: Gtk.Window | undefined;
-
   createEffect(() => {
     const width = isActive() ? PANEL_WIDTH_ACTIVE : PANEL_WIDTH_DOCKED;
     results();
@@ -78,25 +83,20 @@ export default function LauncherWindow({ monitor }: LauncherWindowProps) {
     const selected = results.peek()[selectedIndex.peek()];
 
     if (selected) launch(selected);
-
-    app.get_window("launcher")!.visible = false;
+    hide();
   };
 
   return (
     <window
       name="launcher"
       namespace="launcher"
+      $={(self) => (window = self)}
       visible={false}
       class={windowClass}
       gdkmonitor={monitor}
       layer={Astal.Layer.OVERLAY}
       keymode={Astal.Keymode.ON_DEMAND}
       anchor={isActive.as((active) =>
-        // Anchored to TOP only (no LEFT/RIGHT) centers horizontally while
-        // pinning the top edge, so the panel only grows downward as
-        // results come in instead of re-centering vertically on every
-        // height change (which shifts the input box underneath you while
-        // typing).
         active
           ? Astal.WindowAnchor.TOP
           : Astal.WindowAnchor.TOP | Astal.WindowAnchor.LEFT,
@@ -107,39 +107,16 @@ export default function LauncherWindow({ monitor }: LauncherWindowProps) {
       marginLeft={DOCK_MARGIN_LEFT}
       application={app}
       onNotifyVisible={(self) => {
+        setIsOpen(self.visible);
+
         if (!self.visible) return;
 
         reset();
-        entry?.set_text("");
-        entry?.grab_focus();
+        setIsActive(false);
       }}
-      $={withLayerBlur({}, (self) => {
-        window = self;
-
-        const controller = new Gtk.EventControllerKey();
-
-        controller.connect("key-pressed", (_, key) => {
-          switch (key) {
-            case Gdk.KEY_Escape:
-              self.visible = false;
-              return true;
-            case Gdk.KEY_Up:
-              moveSelection(-1);
-              return true;
-            case Gdk.KEY_Down:
-              moveSelection(1);
-              return true;
-            case Gdk.KEY_BackSpace:
-              if (mode.peek() !== "search" && !entry?.text) {
-                reset();
-              }
-              return false;
-            default:
-              return false;
-          }
-        });
-        self.add_controller(controller);
-      })}
+      onNotifyIsActive={(self) => {
+        if (!self.isActive) self.visible = false;
+      }}
     >
       <box
         class={panelClass}
@@ -171,19 +148,18 @@ export default function LauncherWindow({ monitor }: LauncherWindowProps) {
             />
           </box>
           <box hexpand>
-            <entry
+            <LauncherInput
               text={text}
-              class={entryFieldClass(
-                mode.as((current) => current === "calc" && "calc"),
-              )}
-              hexpand
-              placeholderText={mode.as((current) => MODE_PLACEHOLDER[current])}
-              $={(self: Gtk.Entry) => (entry = self)}
-              onNotifyText={(self) => {
-                update(self.text);
-                self.set_position(-1);
+              mode={mode}
+              onReset={reset}
+              onChange={(input) => {
+                update(input);
+                if (input) setIsActive(true);
               }}
-              onActivate={runSelected}
+              onEnter={runSelected}
+              onEscape={hide}
+              onUp={() => moveSelection(-1)}
+              onDown={() => moveSelection(+1)}
             />
           </box>
         </box>
@@ -196,7 +172,7 @@ export default function LauncherWindow({ monitor }: LauncherWindowProps) {
                 selected={createComputed(() => index() === selectedIndex())}
                 onRun={() => {
                   launch(result);
-                  app.get_window("launcher")!.visible = false;
+                  hide();
                 }}
               />
             )}
@@ -204,6 +180,111 @@ export default function LauncherWindow({ monitor }: LauncherWindowProps) {
         </box>
       </box>
     </window>
+  );
+}
+
+type LauncherBackdropProps = {
+  monitor: Gdk.Monitor;
+  visible: Accessor<boolean>;
+  onClick: () => void;
+};
+
+/**
+ * Invisible full-screen layer just below the launcher; any click on it
+ * (i.e. outside the launcher) calls `onClick`.
+ */
+function LauncherBackdrop({
+  monitor,
+  visible,
+  onClick,
+}: LauncherBackdropProps) {
+  const { TOP, BOTTOM, LEFT, RIGHT } = Astal.WindowAnchor;
+
+  return (
+    <window
+      name="launcher-backdrop"
+      namespace="launcher-backdrop"
+      visible={visible}
+      class={backdropClass}
+      gdkmonitor={monitor}
+      layer={Astal.Layer.TOP}
+      exclusivity={Astal.Exclusivity.IGNORE}
+      anchor={TOP | BOTTOM | LEFT | RIGHT}
+      application={app}
+      $={(self) => {
+        const click = new Gtk.GestureClick({ button: 0 });
+        click.connect("pressed", onClick);
+        self.add_controller(click);
+      }}
+    />
+  );
+}
+
+interface LauncherInputProps {
+  text: Accessor<string>;
+  mode: Accessor<LauncherMode>;
+  onReset?: () => void;
+  onChange?: (input: string) => void;
+  onEnter?: () => void;
+  onEscape?: () => void;
+  onUp?: () => void;
+  onDown?: () => void;
+}
+
+function LauncherInput({
+  text,
+  mode,
+  onReset,
+  onChange,
+  onEnter,
+  onEscape,
+  onUp,
+  onDown,
+}: LauncherInputProps) {
+  let entry: Gtk.Entry | null = null;
+
+  const controller = new Gtk.EventControllerKey({
+    propagationPhase: Gtk.PropagationPhase.CAPTURE,
+  });
+  controller.connect("key-pressed", (_, key) => {
+    if (entry?.text !== text.peek()) {
+      entry?.set_text(text.peek());
+    }
+
+    const shouldReset =
+      key === Gdk.KEY_BackSpace && mode.peek() !== "search" && !entry?.text;
+
+    if (shouldReset) {
+      onReset?.();
+    } else if (key === Gdk.KEY_Escape) {
+      onEscape?.();
+    } else if (key === Gdk.KEY_Return) {
+      onEnter?.();
+    } else if (key === Gdk.KEY_Up) {
+      onUp?.();
+    } else if (key === Gdk.KEY_Down) {
+      onDown?.();
+    } else {
+      return false;
+    }
+
+    return true;
+  });
+
+  return (
+    <entry
+      text={text}
+      hexpand
+      onChanged={({ text }) => onChange?.(text)}
+      placeholderText={mode.as((current) => MODE_PLACEHOLDER[current])}
+      class={entryFieldClass(
+        mode.as((current) => current === "calc" && "calc"),
+      )}
+      $={(self) => {
+        entry = self;
+        self.add_controller(controller);
+      }}
+    />
   );
 }
 
@@ -219,6 +300,7 @@ function ResultRow({ result, selected, onRun }: ResultRowProps) {
 
   return (
     <button
+      focusable={false}
       class={rowClass(selected.as((isSelected) => isSelected && "selected"))}
       onClicked={onRun}
       hexpand
@@ -232,6 +314,7 @@ function ResultRow({ result, selected, onRun }: ResultRowProps) {
         ) : (
           <image gicon={icon as Gio.Icon} />
         )}
+
         <box orientation={Gtk.Orientation.VERTICAL} hexpand>
           <label
             label={resultTitle(result)}
@@ -240,6 +323,7 @@ function ResultRow({ result, selected, onRun }: ResultRowProps) {
             hexpand
             class={result.type === "calc" ? calcAnswerClass : ""}
           />
+
           {subtitle && (
             <label
               label={subtitle}
@@ -374,9 +458,16 @@ const windowClass = defineStyle({
   },
 })();
 
+const backdropClass = defineStyle({
+  style: {
+    background: alpha("#000", 0.3),
+  },
+})();
+
 const panelClass = defineStyle({
   style: {
     background: palette.activeBackground,
+    backdropFilter: backdropBlur(),
     color: palette.text,
     padding: 12,
     borderRadius: 12,
