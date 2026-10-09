@@ -4,6 +4,7 @@ import { copyToClipboard } from "@lib/clipboard";
 import { fileSearch } from "@lib/file-search";
 import { globToRegExp } from "@lib/glob";
 import { execDetached } from "@lib/hyprland";
+import { HOME } from "@lib/path";
 import { createState } from "ags";
 import { timeout, Timer } from "ags/time";
 import AstalApps from "gi://AstalApps?version=0.1";
@@ -108,8 +109,6 @@ const searchApps = (query: string): LauncherResult[] =>
     .slice(0, TOP_N)
     .map((app) => ({ type: "app", id: app.entry, app }) as AppResult)
     .sort(byFrequency);
-
-export const HOME = GLib.get_home_dir();
 
 /** `~/foo` -> `/home/maus/foo`; (rip)grep itself never expands this. */
 const expandRoot = (root: string): string =>

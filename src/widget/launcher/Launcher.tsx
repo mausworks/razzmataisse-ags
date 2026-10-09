@@ -7,31 +7,20 @@ import {
 } from "@lib/css";
 import { withLayerAnimation } from "@lib/hyprland";
 import { clamp } from "@lib/math";
-import {
-  createLauncherModel,
-  HOME,
-  launch,
-  LauncherMode,
-  type LauncherResult,
-} from "@state/launcher";
+import { createLauncherModel, launch, LauncherMode } from "@state/launcher";
 import theme from "@theme";
 import { Accessor, createComputed, createState, For, Node } from "ags";
 import { Astal, Gdk, Gtk } from "ags/gtk4";
 import app from "ags/gtk4/app";
 import { timeout, Timer } from "ags/time";
-import Gio from "gi://Gio?version=2.0";
+
+import LauncherResultCard from "./LauncherResultCard";
 
 const { palette } = theme.bar;
 
-const PANEL_WIDTH_ACTIVE = 460;
-
-export type LauncherProps = {
-  monitor: Gdk.Monitor;
-};
-
 const MODE_PLACEHOLDER: Record<LauncherMode, string> = {
   search: "Launch apps, search files, or run commands…",
-  exec: "Execute command…",
+  exec: "Execute command",
   calc: "0",
 };
 
@@ -41,19 +30,23 @@ const MODE_PLACEHOLDER: Record<LauncherMode, string> = {
 // it, which is exactly the "grows from the center" jumpiness this is
 // replacing: active mode should settle near the center once and then
 // only ever grow downward from there.
-const ACTIVE_TOP_FRACTION = 0.4;
+const ACTIVE_TOP_FRACTION = 0.35;
 const TOGGLE_DURATION = 300;
+const MODE_ICON_SIZE = 20;
+const LAUNCHER_WIDTH = 460;
 
 type LauncherState = "open" | "opening" | "closed";
+
+export interface LauncherProps {
+  monitor: Gdk.Monitor;
+}
 
 export default function Launcher({ monitor }: LauncherProps) {
   const { text, mode, results, update, reset } = createLauncherModel();
   const [selected, setSelected] = createState(0);
   const [state, setState] = createState<LauncherState>("closed");
 
-  const close = () => {
-    setState("closed");
-  };
+  const close = () => setState("closed");
 
   const open = () => {
     if (state.peek() !== "closed") return;
@@ -84,7 +77,6 @@ export default function Launcher({ monitor }: LauncherProps) {
   return (
     <>
       <LauncherBackdrop state={state} monitor={monitor} onClick={close} />
-
       <LauncherWindow
         state={state}
         monitor={monitor}
@@ -92,51 +84,31 @@ export default function Launcher({ monitor }: LauncherProps) {
         onClose={close}
       >
         <box
-          class={panelClass(state as never)}
+          class={columnClass(state as never)}
           orientation={Gtk.Orientation.VERTICAL}
-          spacing={8}
-          widthRequest={PANEL_WIDTH_ACTIVE}
+          spacing={12}
+          widthRequest={LAUNCHER_WIDTH}
+          valign={Gtk.Align.START}
         >
-          <box class={entryWrapperClass} spacing={8}>
-            <box
-              class={iconSlotClass}
-              halign={Gtk.Align.CENTER}
-              valign={Gtk.Align.CENTER}
-            >
-              <image
-                iconName="search-symbolic"
-                visible={mode.as((current) => current === "search")}
-              />
-              <image
-                iconName="utilities-terminal-symbolic"
-                class={accentIconClass}
-                visible={mode.as((current) => current === "exec")}
-              />
-              <image
-                iconName="accessories-calculator-symbolic"
-                class={accentIconClass}
-                visible={mode.as((current) => current === "calc")}
-              />
-            </box>
+          <box class={entryWrapperClass} spacing={12} hexpand>
+            <LauncherModeIcon mode={mode} />
 
-            <box hexpand>
-              <LauncherInput
-                text={text}
-                mode={mode}
-                onReset={reset}
-                onChange={update}
-                onLaunch={launchSelected}
-                onClose={close}
-                onUp={() => moveSelection(-1)}
-                onDown={() => moveSelection(+1)}
-              />
-            </box>
+            <LauncherInput
+              text={text}
+              mode={mode}
+              onReset={reset}
+              onChange={update}
+              onLaunch={launchSelected}
+              onClose={close}
+              onUp={() => moveSelection(-1)}
+              onDown={() => moveSelection(+1)}
+            />
           </box>
 
-          <box orientation={Gtk.Orientation.VERTICAL} spacing={2}>
+          <box orientation={Gtk.Orientation.VERTICAL} spacing={6}>
             <For each={results} id={(result) => result.id}>
               {(result, index) => (
-                <ResultRow
+                <LauncherResultCard
                   result={result}
                   selected={createComputed(() => index() === selected())}
                 />
@@ -179,12 +151,19 @@ function LauncherWindow({
       gdkmonitor={monitor}
       layer={Astal.Layer.OVERLAY}
       keymode={Astal.Keymode.ON_DEMAND}
-      anchor={Astal.WindowAnchor.TOP}
+      anchor={Astal.WindowAnchor.TOP | Astal.WindowAnchor.BOTTOM}
       marginTop={activeMarginTop}
       application={app}
       onNotifyVisible={(self) => (self.visible ? onOpen() : onClose())}
       onNotifyIsActive={(self) => (self.visible = self.isActive)}
-      $={withLayerAnimation("fade")}
+      $={withLayerAnimation("fade", (self) => {
+        const click = new Gtk.GestureClick({ button: 0 });
+        click.connect("pressed", (_, x, y) => {
+          const target = self.pick(x, y, Gtk.PickFlags.DEFAULT);
+          if (!target || target === self || target === self.child) onClose();
+        });
+        self.add_controller(click);
+      })}
     >
       {children}
     </window>
@@ -221,6 +200,36 @@ function LauncherBackdrop({ monitor, onClick, state }: LauncherBackdropProps) {
         self.add_controller(click);
       })}
     />
+  );
+}
+
+interface LauncherModeIconProps {
+  mode: Accessor<LauncherMode>;
+}
+
+function LauncherModeIcon({ mode }: LauncherModeIconProps) {
+  return (
+    <box
+      class={iconSlotClass}
+      halign={Gtk.Align.CENTER}
+      valign={Gtk.Align.CENTER}
+    >
+      <image
+        pixelSize={MODE_ICON_SIZE}
+        iconName="search-symbolic"
+        visible={mode.as((current) => current === "search")}
+      />
+      <image
+        pixelSize={MODE_ICON_SIZE}
+        iconName="utilities-terminal-symbolic"
+        visible={mode.as((current) => current === "exec")}
+      />
+      <image
+        pixelSize={MODE_ICON_SIZE}
+        iconName="calculator-symbolic"
+        visible={mode.as((current) => current === "calc")}
+      />
+    </box>
   );
 }
 
@@ -282,7 +291,7 @@ function LauncherInput({
       onChanged={({ text }) => onChange?.(text)}
       placeholderText={mode.as((current) => MODE_PLACEHOLDER[current])}
       class={entryFieldClass(
-        mode.as((current) => current === "calc" && "calc"),
+        mode.as((current) => current !== "search" && "monospace"),
       )}
       $={(self) => {
         entry = self;
@@ -291,169 +300,6 @@ function LauncherInput({
     />
   );
 }
-
-interface ResultRowProps {
-  result: LauncherResult;
-  selected: Accessor<boolean>;
-}
-
-function ResultRow({ result, selected }: ResultRowProps) {
-  const subtitle = resultSubtitle(result);
-  const icon = result.type !== "calc" && resultIcon(result);
-
-  return (
-    <button
-      focusable={false}
-      class={rowClass(selected.as((isSelected) => isSelected && "selected"))}
-      onClicked={() => launch(result)}
-      hexpand
-      halign={Gtk.Align.FILL}
-    >
-      <box spacing={8} hexpand>
-        {result.type === "calc" ? (
-          <label label="=" class={calcRowGlyphClass} />
-        ) : typeof icon === "string" ? (
-          <image iconName={icon} />
-        ) : (
-          <image gicon={icon as Gio.Icon} />
-        )}
-
-        <box orientation={Gtk.Orientation.VERTICAL} hexpand>
-          <label
-            label={resultTitle(result)}
-            halign={Gtk.Align.START}
-            ellipsize={3}
-            hexpand
-            class={result.type === "calc" ? calcAnswerClass : ""}
-          />
-
-          {subtitle && (
-            <label
-              label={subtitle}
-              halign={Gtk.Align.START}
-              ellipsize={3}
-              hexpand
-              class={subtitleClass}
-            />
-          )}
-        </box>
-      </box>
-    </button>
-  );
-}
-
-/** `/home/maus/foo` -> `~/foo`. Only the user's own home, never hard-coded. */
-const prettifyPath = (path: string): string =>
-  path === HOME
-    ? "~"
-    : path.startsWith(`${HOME}/`)
-      ? `~${path.slice(HOME.length)}`
-      : path;
-
-const COMPACT_MAX_LENGTH = 48;
-
-/**
- * `~/really/long/path/to/some/deeply/nested/file.rs` ->
- * `~/really/…/nested/file.rs` -- keeps the filename (the part you actually
- * care about) whole and grows a head from the root for as many segments as
- * still fit, eliding whatever's left in the middle. Driven by total string
- * length rather than segment count -- a path with just two segments can
- * still be too long to show in full if those segments' names are long
- * (e.g. `/<some-really-long-directory-name>/file.lol`), while a path with
- * many short segments might not need compacting at all. Run on an
- * already-`prettifyPath`'d string.
- */
-const compactPath = (path: string): string => {
-  if (path.length <= COMPACT_MAX_LENGTH) return path;
-
-  const isAbsolute = path.startsWith("/");
-  const segments = path.split("/").filter(Boolean);
-  if (segments.length <= 1) return path;
-
-  const prefix = isAbsolute ? "/" : "";
-  const tail = segments[segments.length - 1]!;
-
-  let head = segments[0]!;
-  let i = 1;
-  if (head === "~" && segments.length > 1) {
-    head = `${head}/${segments[1]}`;
-    i = 2;
-  }
-  for (; i < segments.length - 1; i++) {
-    const candidate = `${head}/${segments[i]}`;
-    if (`${prefix}${candidate}/…/${tail}`.length > COMPACT_MAX_LENGTH) break;
-    head = candidate;
-  }
-
-  const compacted = `${prefix}${head}/…/${tail}`;
-  return compacted.length < path.length ? compacted : path;
-};
-
-const formatPath = (path: string) => compactPath(prettifyPath(path));
-
-const EXTENSION_ICON_OVERRIDES: Record<string, string[]> = {
-  ts: ["text-x-javascript", "text-x-generic"],
-  tsx: ["text-x-javascript", "text-x-generic"],
-  jsx: ["text-x-javascript", "text-x-generic"],
-};
-
-/**
- * Resolves a file path to a themed icon via the desktop's own mime-type
- * database rather than a hand-maintained extension table -- the installed
- * icon theme (WhiteSur, here) ships icons for most common source languages
- * (Rust, Python, Go, Ruby, C/C++, CSS, HTML, Markdown, …) under their mime
- * type's name already, and `Gio.content_type_get_icon` returns a themed
- * icon with its own specific -> generic fallback chain built in, so an
- * unrecognized extension just degrades to the theme's generic file icon
- * instead of nothing.
- */
-const fileIcon = (path: string): Gio.Icon => {
-  const ext = path.split(".").pop()?.toLowerCase();
-  const override = ext && EXTENSION_ICON_OVERRIDES[ext];
-  if (override) return Gio.ThemedIcon.new_from_names(override);
-
-  const [contentType] = Gio.content_type_guess(path, null);
-  return Gio.content_type_get_icon(contentType);
-};
-
-const resultIcon = (
-  result: Exclude<LauncherResult, { type: "calc" }>,
-): string | Gio.Icon => {
-  switch (result.type) {
-    case "app":
-      return result.app.iconName || "application-x-executable-symbolic";
-    case "file":
-      return fileIcon(result.path);
-    case "exec":
-      return "utilities-terminal-symbolic";
-  }
-};
-
-const resultTitle = (result: LauncherResult): string => {
-  switch (result.type) {
-    case "app":
-      return result.app.name;
-    case "file":
-      return result.path.split("/").pop() ?? result.path;
-    case "exec":
-      return `! ${result.command}`;
-    case "calc":
-      return result.value;
-  }
-};
-
-const resultSubtitle = (result: LauncherResult): string | false => {
-  switch (result.type) {
-    case "app":
-      return result.app.description || false;
-    case "file":
-      return formatPath(result.path);
-    case "exec":
-      return "Run in a terminal";
-    case "calc":
-      return "Press enter to copy";
-  }
-};
 
 const slideIn = defineAnimation({
   keyframes: {
@@ -470,7 +316,7 @@ const slideIn = defineAnimation({
 const windowClass = defineStyle({
   style: {
     background: "transparent",
-    paddingTop: 32,
+    padding: 48,
   },
 });
 
@@ -480,15 +326,9 @@ const backdropClass = defineStyle({
   },
 })();
 
-const panelClass = defineStyle({
+const columnClass = defineStyle({
   style: {
     transformOrigin: "top center",
-    background: palette.activeBackground,
-    backdropFilter: backdropBlur(),
-    color: palette.text,
-    padding: 12,
-    borderRadius: 12,
-    border: `1px solid ${alpha(palette.text, 0.1)}`,
   },
   variants: {
     opening: {
@@ -499,22 +339,23 @@ const panelClass = defineStyle({
 
 const entryWrapperClass = defineStyle({
   style: {
-    background: alpha(palette.text, 0.08),
+    background: palette.activeBackground,
+    backdropFilter: backdropBlur(),
+    color: palette.text,
+    border: `1px solid ${alpha(palette.text, 0.1)}`,
     borderRadius: 9999,
-    padding: "6px 14px",
+    padding: "12px 18px",
+    boxShadow: [
+      `0 12px 32px 4px ${alpha("#000", 0.35)}`,
+      `0 2px 6px ${alpha("#000", 0.3)}`,
+    ].join(", "),
   },
 })();
 
 const iconSlotClass = defineStyle({
   style: {
-    minWidth: 16,
-    minHeight: 16,
-  },
-})();
-
-const accentIconClass = defineStyle({
-  style: {
-    color: palette.accent,
+    minWidth: MODE_ICON_SIZE,
+    minHeight: MODE_ICON_SIZE,
   },
 })();
 
@@ -525,53 +366,12 @@ const entryFieldClass = defineStyle({
     border: "none",
     boxShadow: "none",
     padding: 0,
-    fontSize: 14,
+    fontSize: 16,
+    fontWeight: 500,
   },
   variants: {
-    calc: {
+    monospace: {
       fontFamily: "monospace",
     },
   },
 });
-
-const calcRowGlyphClass = defineStyle({
-  style: {
-    color: palette.accent,
-    fontFamily: "monospace",
-    fontWeight: "bold",
-  },
-})();
-
-const calcAnswerClass = defineStyle({
-  style: {
-    fontFamily: "monospace",
-  },
-})();
-
-const rowClass = defineStyle({
-  style: {
-    background: "transparent",
-    border: "none",
-    boxShadow: "none",
-    borderRadius: 8,
-    padding: "4px 8px",
-    "&:hover": {
-      background: alpha(palette.text, 0.08),
-    },
-    "&:active": {
-      background: alpha(palette.accent, 0.16),
-    },
-  },
-  variants: {
-    selected: {
-      background: alpha(palette.accent, 0.16),
-    },
-  },
-});
-
-const subtitleClass = defineStyle({
-  style: {
-    color: "#8E8E93",
-    fontSize: 11,
-  },
-})();
