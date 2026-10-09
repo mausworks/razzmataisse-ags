@@ -7,7 +7,12 @@ import {
 } from "@lib/css";
 import { withLayerAnimation } from "@lib/hyprland";
 import { clamp } from "@lib/math";
-import { createLauncherModel, launch, LauncherMode } from "@state/launcher";
+import {
+  createLauncherModel,
+  launch,
+  LauncherMode,
+  LauncherResult,
+} from "@state/launcher";
 import theme from "@theme";
 import { Accessor, createComputed, createState, For, Node } from "ags";
 import { Astal, Gdk, Gtk } from "ags/gtk4";
@@ -46,7 +51,15 @@ export default function Launcher({ monitor }: LauncherProps) {
   const [selected, setSelected] = createState(0);
   const [state, setState] = createState<LauncherState>("closed");
 
-  const close = () => setState("closed");
+  const onLaunch = (result: LauncherResult) => {
+    launch(result);
+    close();
+  };
+
+  const close = () => {
+    setState("closed");
+    timeout(100, reset);
+  };
 
   const open = () => {
     if (state.peek() !== "closed") return;
@@ -70,8 +83,7 @@ export default function Launcher({ monitor }: LauncherProps) {
 
     if (!result) return;
 
-    launch(result);
-    close();
+    onLaunch(result);
   };
 
   return (
@@ -111,6 +123,7 @@ export default function Launcher({ monitor }: LauncherProps) {
                 <LauncherResultCard
                   result={result}
                   selected={createComputed(() => index() === selected())}
+                  onClick={onLaunch}
                 />
               )}
             </For>

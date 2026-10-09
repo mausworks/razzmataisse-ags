@@ -1,6 +1,6 @@
 import { alpha, backdropBlur, defineStyle } from "@lib/css";
 import { ellipsizePath } from "@lib/path";
-import { launch, type LauncherResult } from "@state/launcher";
+import { type LauncherResult } from "@state/launcher";
 import theme from "@theme";
 import { Accessor, Fragment } from "ags";
 import { Gdk, Gtk } from "ags/gtk4";
@@ -14,18 +14,20 @@ const RESULT_ICON_SIZE = 32;
 export interface ResultCardProps {
   result: LauncherResult;
   selected: Accessor<boolean>;
+  onClick?: (result: LauncherResult) => void;
 }
 
 export default function LauncherResultCard({
   result,
   selected,
+  onClick,
 }: ResultCardProps) {
   return (
     <button
       cursor={POINTER_CURSOR}
       focusable={false}
       class={resultClass(selected.as((isSelected) => isSelected && "selected"))}
-      onClicked={() => launch(result)}
+      onClicked={() => onClick?.(result)}
       hexpand
       halign={Gtk.Align.FILL}
     >
