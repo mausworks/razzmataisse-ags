@@ -49,12 +49,12 @@ export type PopupBlurOptions = {
   ignoreAlpha?: number;
 };
 
-const disableAnimations = (namespace: string) =>
+const setLayerAnimation = (namespace: string, style: string) =>
   evalHyprlandLua(
     `hl.layer_rule(${Lua.stringify({
-      name: `${namespace}-no-anim`,
-      match: { namespace },
-      no_anim: true,
+      name: `animation-${namespace}`,
+      match: { namespace: `^${namespace}$` },
+      animation: style,
     })})`,
   );
 
@@ -93,10 +93,20 @@ export const withPopupBlur =
     ref?.(window);
   };
 
-export const withDisabledAnimations =
-  <W extends Astal.Window>(ref?: WindowCallback<W>) =>
+/**
+ * Sets the Hyprland open/close animation style of a layer-shell window.
+ * Unlike CSS `opacity`, Hyprland's fade also fades the window's
+ * `backdropFilter` blur.
+ *
+ * @example
+ * ```tsx
+ * <window namespace="launcher" $={withLayerAnimation("fade")}>
+ * ```
+ */
+export const withLayerAnimation =
+  <W extends Astal.Window>(style: string, ref?: WindowCallback<W>) =>
   (window: W) => {
-    disableAnimations(window.namespace);
+    setLayerAnimation(window.namespace, style);
 
     ref?.(window);
   };

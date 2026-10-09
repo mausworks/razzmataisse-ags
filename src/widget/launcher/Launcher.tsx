@@ -1,12 +1,11 @@
 import {
   alpha,
-  animations,
   backdropBlur,
   defineAnimation,
   defineStyle,
   translateY,
 } from "@lib/css";
-import { withDisabledAnimations } from "@lib/hyprland";
+import { withLayerAnimation } from "@lib/hyprland";
 import { clamp } from "@lib/math";
 import {
   createLauncherModel,
@@ -45,12 +44,25 @@ const MODE_PLACEHOLDER: Record<LauncherMode, string> = {
 const ACTIVE_TOP_FRACTION = 0.4;
 const TOGGLE_DURATION = 300;
 
-type LauncherState = "open" | "opening" | "closing" | "closed";
+type LauncherState = "open" | "opening" | "closed";
 
 export default function Launcher({ monitor }: LauncherProps) {
   const { text, mode, results, update, reset } = createLauncherModel();
   const [selected, setSelected] = createState(0);
   const [state, setState] = createState<LauncherState>("closed");
+
+  const close = () => {
+    setState("closed");
+  };
+
+  const open = () => {
+    if (state.peek() !== "closed") return;
+
+    setState("opening");
+    timeout(TOGGLE_DURATION, () => {
+      if (state.peek() === "opening") setState("open");
+    });
+  };
 
   const moveSelection = (delta: number) => {
     const count = results.peek().length;
@@ -58,20 +70,6 @@ export default function Launcher({ monitor }: LauncherProps) {
     if (count === 0) return;
 
     setSelected((current) => clamp(current + delta, 0, count - 1));
-  };
-
-  const close = () => {
-    if (state.peek() === "closed") return;
-
-    setState("closing");
-    timeout(TOGGLE_DURATION, () => setState("closed"));
-  };
-
-  const open = () => {
-    if (state.peek() === "open") return;
-
-    setState("opening");
-    timeout(TOGGLE_DURATION, () => setState("open"));
   };
 
   const launchSelected = () => {
@@ -120,6 +118,7 @@ export default function Launcher({ monitor }: LauncherProps) {
                 visible={mode.as((current) => current === "calc")}
               />
             </box>
+
             <box hexpand>
               <LauncherInput
                 text={text}
@@ -156,7 +155,7 @@ interface LauncherWindowProps {
   children: Node;
   /** Called when something else (e.g. `ags toggle`) shows the window. */
   onOpen: () => void;
-  /** Called when something else hides the window while it's open. */
+  /** Called when something else hides the window. */
   onClose: () => void;
 }
 
@@ -170,7 +169,6 @@ function LauncherWindow({
   const activeMarginTop = Math.round(
     monitor.get_geometry().height * ACTIVE_TOP_FRACTION,
   );
-  const isAnimating = state.as((s) => s === "opening" || s === "closing");
 
   return (
     <window
@@ -184,15 +182,9 @@ function LauncherWindow({
       anchor={Astal.WindowAnchor.TOP}
       marginTop={activeMarginTop}
       application={app}
-      onNotifyVisible={(self) => {
-        if (self.visible) {
-          onOpen();
-        } else if (!isAnimating.peek()) {
-          onClose();
-        }
-      }}
+      onNotifyVisible={(self) => (self.visible ? onOpen() : onClose())}
       onNotifyIsActive={(self) => (self.visible = self.isActive)}
-      $={withDisabledAnimations()}
+      $={withLayerAnimation("fade")}
     >
       {children}
     </window>
@@ -217,17 +209,17 @@ function LauncherBackdrop({ monitor, onClick, state }: LauncherBackdropProps) {
       name="launcher-backdrop"
       namespace="launcher-backdrop"
       visible={state.as((s) => s !== "closed")}
-      class={backdropClass(state() as never)}
+      class={backdropClass}
       gdkmonitor={monitor}
       layer={Astal.Layer.TOP}
       exclusivity={Astal.Exclusivity.IGNORE}
       anchor={TOP | BOTTOM | LEFT | RIGHT}
       application={app}
-      $={(self) => {
+      $={withLayerAnimation("fade", (self) => {
         const click = new Gtk.GestureClick({ button: 0 });
         click.connect("pressed", onClick);
         self.add_controller(click);
-      }}
+      })}
     />
   );
 }
@@ -285,8 +277,8 @@ function LauncherInput({
 
   return (
     <entry
-      text={text}
       hexpand
+      text={text}
       onChanged={({ text }) => onChange?.(text)}
       placeholderText={mode.as((current) => MODE_PLACEHOLDER[current])}
       class={entryFieldClass(
@@ -300,10 +292,10 @@ function LauncherInput({
   );
 }
 
-type ResultRowProps = {
+interface ResultRowProps {
   result: LauncherResult;
   selected: Accessor<boolean>;
-};
+}
 
 function ResultRow({ result, selected }: ResultRowProps) {
   const subtitle = resultSubtitle(result);
@@ -459,21 +451,9 @@ const resultSubtitle = (result: LauncherResult): string | false => {
     case "exec":
       return "Run in a terminal";
     case "calc":
-      return "Press enter to copy.";
+      return "Press enter to copy";
   }
 };
-
-const fadeIn = defineAnimation({
-  keyframes: {
-    from: { opacity: 0 },
-    to: { opacity: 1 },
-  },
-  defaults: {
-    duration: TOGGLE_DURATION,
-    easing: "ease-out",
-    fillMode: "both",
-  },
-});
 
 const slideIn = defineAnimation({
   keyframes: {
@@ -498,20 +478,7 @@ const backdropClass = defineStyle({
   style: {
     background: alpha("#000", 0.4),
   },
-  variants: {
-    opening: {
-      animation: fadeIn({
-        duration: TOGGLE_DURATION,
-      }),
-    },
-    closing: {
-      animation: fadeIn({
-        direction: "reverse",
-        duration: TOGGLE_DURATION,
-      }),
-    },
-  },
-});
+})();
 
 const panelClass = defineStyle({
   style: {
@@ -525,13 +492,7 @@ const panelClass = defineStyle({
   },
   variants: {
     opening: {
-      animation: animations(slideIn(), fadeIn()),
-    },
-    closing: {
-      animation: animations(
-        slideIn({ direction: "reverse", easing: "ease-in-out" }),
-        fadeIn({ direction: "reverse", duration: TOGGLE_DURATION }),
-      ),
+      animation: slideIn(),
     },
   },
 });
