@@ -166,7 +166,7 @@ const buttonLabelClass = defineStyle({
     }),
   },
   variants: {
-    open: { opacity: 1, color: alpha(theme.bar.palette.text, 0.1) },
+    open: { opacity: 1, color: alpha(theme.bar.palette.text, 0.25) },
     filler: { opacity: 1, color: alpha(theme.bar.palette.text, 0.1) },
     focused: {
       opacity: 1,
