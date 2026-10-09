@@ -5,6 +5,8 @@ import GLib from "gi://GLib?version=2.0";
 
 const Hyprland = AstalHyprland.get_default()!;
 
+export type WindowCallback<W extends Astal.Window> = (window: W) => void;
+
 /**
  * Hyprland's own Lua config functions (`hl.*`) aren't config-file-only --
  * an `eval <lua>` IPC message (what the `hyprctl eval` CLI itself sends,
@@ -47,6 +49,15 @@ export type PopupBlurOptions = {
   ignoreAlpha?: number;
 };
 
+const disableAnimations = (namespace: string) =>
+  evalHyprlandLua(
+    `hl.layer_rule(${Lua.stringify({
+      name: `${namespace}-no-anim`,
+      match: { namespace },
+      no_anim: true,
+    })})`,
+  );
+
 /** Hyprland only blurs layer popups via this rule; `backdropFilter` can't. */
 const enablePopupBlur = (
   namespace: string,
@@ -55,7 +66,7 @@ const enablePopupBlur = (
   evalHyprlandLua(
     `hl.layer_rule(${Lua.stringify({
       name: `blur-popups-${namespace}`,
-      match: { namespace },
+      match: { namespace: `^${namespace}$` },
       ignore_alpha: ignoreAlpha,
       blur_popups: true,
     })})`,
@@ -71,13 +82,21 @@ const enablePopupBlur = (
  * <window namespace="bar" $={withPopupBlur()}>
  * ```
  */
-export function withPopupBlur<W extends Astal.Window>(
-  options?: PopupBlurOptions,
-  ref?: (self: W) => void,
-) {
-  return (self: W) => {
-    enablePopupBlur(self.namespace, options);
+export const withPopupBlur =
+  <W extends Astal.Window>(
+    options?: PopupBlurOptions,
+    ref?: WindowCallback<W>,
+  ) =>
+  (window: W) => {
+    enablePopupBlur(window.namespace, options);
 
-    ref?.(self);
+    ref?.(window);
   };
-}
+
+export const withDisabledAnimations =
+  <W extends Astal.Window>(ref?: WindowCallback<W>) =>
+  (window: W) => {
+    disableAnimations(window.namespace);
+
+    ref?.(window);
+  };

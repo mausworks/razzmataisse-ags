@@ -1,4 +1,13 @@
-import { alpha, backdropBlur, defineStyle } from "@lib/css";
+import {
+  alpha,
+  animations,
+  backdropBlur,
+  defineAnimation,
+  defineStyle,
+  translateY,
+} from "@lib/css";
+import { withDisabledAnimations } from "@lib/hyprland";
+import { clamp } from "@lib/math";
 import {
   createLauncherModel,
   HOME,
@@ -7,21 +16,17 @@ import {
   type LauncherResult,
 } from "@state/launcher";
 import theme from "@theme";
-import { Accessor, createComputed, createEffect, createState, For } from "ags";
+import { Accessor, createComputed, createState, For, Node } from "ags";
 import { Astal, Gdk, Gtk } from "ags/gtk4";
 import app from "ags/gtk4/app";
+import { timeout, Timer } from "ags/time";
 import Gio from "gi://Gio?version=2.0";
 
 const { palette } = theme.bar;
 
-/** Matches `Bar.tsx`'s own bar height -- keeps the docked position flush. */
-const BAR_HEIGHT = 34;
-const DOCK_GAP = 12;
-const DOCK_MARGIN_LEFT = 12;
-const PANEL_WIDTH_DOCKED = 360;
 const PANEL_WIDTH_ACTIVE = 460;
 
-export type LauncherWindowProps = {
+export type LauncherProps = {
   monitor: Gdk.Monitor;
 };
 
@@ -38,174 +43,181 @@ const MODE_PLACEHOLDER: Record<LauncherMode, string> = {
 // replacing: active mode should settle near the center once and then
 // only ever grow downward from there.
 const ACTIVE_TOP_FRACTION = 0.4;
+const TOGGLE_DURATION = 300;
 
-export default function LauncherWindow({ monitor }: LauncherWindowProps) {
+type LauncherState = "open" | "opening" | "closing" | "closed";
+
+export default function Launcher({ monitor }: LauncherProps) {
   const { text, mode, results, update, reset } = createLauncherModel();
-  const [isActive, setIsActive] = createState(false);
-  const [isOpen, setIsOpen] = createState(false);
-
-  let window: Gtk.Window | undefined;
-
-  const hide = () => {
-    if (window) window.visible = false;
-  };
-
-  LauncherBackdrop({ monitor, visible: isOpen, onClick: hide });
-
-  const activeMarginTop = Math.round(
-    monitor.get_geometry().height * ACTIVE_TOP_FRACTION,
-  );
-
-  const [selectedIndex, setSelectedIndex] = createState(0);
-
-  createEffect(() => {
-    results();
-    setSelectedIndex(0);
-  });
+  const [selected, setSelected] = createState(0);
+  const [state, setState] = createState<LauncherState>("closed");
 
   const moveSelection = (delta: number) => {
     const count = results.peek().length;
 
     if (count === 0) return;
 
-    setSelectedIndex((current) =>
-      Math.max(0, Math.min(count - 1, current + delta)),
-    );
+    setSelected((current) => clamp(current + delta, 0, count - 1));
   };
 
-  createEffect(() => {
-    const width = isActive() ? PANEL_WIDTH_ACTIVE : PANEL_WIDTH_DOCKED;
-    results();
-    window?.set_default_size(width, -1);
-  });
+  const close = () => {
+    if (state.peek() === "closed") return;
 
-  const runSelected = () => {
-    const selected = results.peek()[selectedIndex.peek()];
-
-    if (selected) launch(selected);
-    hide();
+    setState("closing");
+    timeout(TOGGLE_DURATION, () => setState("closed"));
   };
+
+  const open = () => {
+    if (state.peek() === "open") return;
+
+    setState("opening");
+    timeout(TOGGLE_DURATION, () => setState("open"));
+  };
+
+  const launchSelected = () => {
+    const result = results.peek().at(selected.peek());
+
+    if (!result) return;
+
+    launch(result);
+    close();
+  };
+
+  return (
+    <>
+      <LauncherBackdrop state={state} monitor={monitor} onClick={close} />
+
+      <LauncherWindow
+        state={state}
+        monitor={monitor}
+        onOpen={open}
+        onClose={close}
+      >
+        <box
+          class={panelClass(state as never)}
+          orientation={Gtk.Orientation.VERTICAL}
+          spacing={8}
+          widthRequest={PANEL_WIDTH_ACTIVE}
+        >
+          <box class={entryWrapperClass} spacing={8}>
+            <box
+              class={iconSlotClass}
+              halign={Gtk.Align.CENTER}
+              valign={Gtk.Align.CENTER}
+            >
+              <image
+                iconName="search-symbolic"
+                visible={mode.as((current) => current === "search")}
+              />
+              <image
+                iconName="utilities-terminal-symbolic"
+                class={accentIconClass}
+                visible={mode.as((current) => current === "exec")}
+              />
+              <image
+                iconName="accessories-calculator-symbolic"
+                class={accentIconClass}
+                visible={mode.as((current) => current === "calc")}
+              />
+            </box>
+            <box hexpand>
+              <LauncherInput
+                text={text}
+                mode={mode}
+                onReset={reset}
+                onChange={update}
+                onLaunch={launchSelected}
+                onClose={close}
+                onUp={() => moveSelection(-1)}
+                onDown={() => moveSelection(+1)}
+              />
+            </box>
+          </box>
+
+          <box orientation={Gtk.Orientation.VERTICAL} spacing={2}>
+            <For each={results} id={(result) => result.id}>
+              {(result, index) => (
+                <ResultRow
+                  result={result}
+                  selected={createComputed(() => index() === selected())}
+                />
+              )}
+            </For>
+          </box>
+        </box>
+      </LauncherWindow>
+    </>
+  );
+}
+
+interface LauncherWindowProps {
+  state: Accessor<LauncherState>;
+  monitor: Gdk.Monitor;
+  children: Node;
+  /** Called when something else (e.g. `ags toggle`) shows the window. */
+  onOpen: () => void;
+  /** Called when something else hides the window while it's open. */
+  onClose: () => void;
+}
+
+function LauncherWindow({
+  state,
+  monitor,
+  children,
+  onOpen,
+  onClose,
+}: LauncherWindowProps) {
+  const activeMarginTop = Math.round(
+    monitor.get_geometry().height * ACTIVE_TOP_FRACTION,
+  );
+  const isAnimating = state.as((s) => s === "opening" || s === "closing");
 
   return (
     <window
       name="launcher"
       namespace="launcher"
-      $={(self) => (window = self)}
-      visible={false}
-      class={windowClass}
+      class={windowClass(state as never)}
+      visible={state.as((s) => s !== "closed")}
       gdkmonitor={monitor}
       layer={Astal.Layer.OVERLAY}
       keymode={Astal.Keymode.ON_DEMAND}
-      anchor={isActive.as((active) =>
-        active
-          ? Astal.WindowAnchor.TOP
-          : Astal.WindowAnchor.TOP | Astal.WindowAnchor.LEFT,
-      )}
-      marginTop={isActive.as((active) =>
-        active ? activeMarginTop : BAR_HEIGHT + DOCK_GAP,
-      )}
-      marginLeft={DOCK_MARGIN_LEFT}
+      anchor={Astal.WindowAnchor.TOP}
+      marginTop={activeMarginTop}
       application={app}
       onNotifyVisible={(self) => {
-        setIsOpen(self.visible);
-
-        if (!self.visible) return;
-
-        reset();
-        setIsActive(false);
+        if (self.visible) {
+          onOpen();
+        } else if (!isAnimating.peek()) {
+          onClose();
+        }
       }}
-      onNotifyIsActive={(self) => {
-        if (!self.isActive) self.visible = false;
-      }}
+      onNotifyIsActive={(self) => (self.visible = self.isActive)}
+      $={withDisabledAnimations()}
     >
-      <box
-        class={panelClass}
-        orientation={Gtk.Orientation.VERTICAL}
-        spacing={8}
-        widthRequest={isActive.as((active) =>
-          active ? PANEL_WIDTH_ACTIVE : PANEL_WIDTH_DOCKED,
-        )}
-      >
-        <box class={entryWrapperClass} spacing={8}>
-          <box
-            class={iconSlotClass}
-            halign={Gtk.Align.CENTER}
-            valign={Gtk.Align.CENTER}
-          >
-            <image
-              iconName="go-next-symbolic"
-              visible={mode.as((current) => current === "search")}
-            />
-            <image
-              iconName="utilities-terminal-symbolic"
-              class={accentIconClass}
-              visible={mode.as((current) => current === "exec")}
-            />
-            <image
-              iconName="accessories-calculator-symbolic"
-              class={accentIconClass}
-              visible={mode.as((current) => current === "calc")}
-            />
-          </box>
-          <box hexpand>
-            <LauncherInput
-              text={text}
-              mode={mode}
-              onReset={reset}
-              onChange={(input) => {
-                update(input);
-                if (input) setIsActive(true);
-              }}
-              onEnter={runSelected}
-              onEscape={hide}
-              onUp={() => moveSelection(-1)}
-              onDown={() => moveSelection(+1)}
-            />
-          </box>
-        </box>
-
-        <box orientation={Gtk.Orientation.VERTICAL} spacing={2}>
-          <For each={results} id={(result) => result.id}>
-            {(result, index) => (
-              <ResultRow
-                result={result}
-                selected={createComputed(() => index() === selectedIndex())}
-                onRun={() => {
-                  launch(result);
-                  hide();
-                }}
-              />
-            )}
-          </For>
-        </box>
-      </box>
+      {children}
     </window>
   );
 }
 
-type LauncherBackdropProps = {
+interface LauncherBackdropProps {
   monitor: Gdk.Monitor;
-  visible: Accessor<boolean>;
+  state: Accessor<LauncherState>;
   onClick: () => void;
-};
+}
 
 /**
  * Invisible full-screen layer just below the launcher; any click on it
  * (i.e. outside the launcher) calls `onClick`.
  */
-function LauncherBackdrop({
-  monitor,
-  visible,
-  onClick,
-}: LauncherBackdropProps) {
+function LauncherBackdrop({ monitor, onClick, state }: LauncherBackdropProps) {
   const { TOP, BOTTOM, LEFT, RIGHT } = Astal.WindowAnchor;
 
   return (
     <window
       name="launcher-backdrop"
       namespace="launcher-backdrop"
-      visible={visible}
-      class={backdropClass}
+      visible={state.as((s) => s !== "closed")}
+      class={backdropClass(state() as never)}
       gdkmonitor={monitor}
       layer={Astal.Layer.TOP}
       exclusivity={Astal.Exclusivity.IGNORE}
@@ -225,8 +237,8 @@ interface LauncherInputProps {
   mode: Accessor<LauncherMode>;
   onReset?: () => void;
   onChange?: (input: string) => void;
-  onEnter?: () => void;
-  onEscape?: () => void;
+  onLaunch?: () => void;
+  onClose?: () => void;
   onUp?: () => void;
   onDown?: () => void;
 }
@@ -236,20 +248,24 @@ function LauncherInput({
   mode,
   onReset,
   onChange,
-  onEnter,
-  onEscape,
+  onLaunch,
+  onClose,
   onUp,
   onDown,
 }: LauncherInputProps) {
   let entry: Gtk.Entry | null = null;
+  let timer: Timer | null = null;
 
   const controller = new Gtk.EventControllerKey({
     propagationPhase: Gtk.PropagationPhase.CAPTURE,
   });
   controller.connect("key-pressed", (_, key) => {
-    if (entry?.text !== text.peek()) {
-      entry?.set_text(text.peek());
-    }
+    timer?.cancel();
+    timer = timeout(5, () => {
+      if (entry?.text !== text.peek()) {
+        entry?.set_text(text.peek());
+      }
+    });
 
     const shouldReset =
       key === Gdk.KEY_BackSpace && mode.peek() !== "search" && !entry?.text;
@@ -257,18 +273,14 @@ function LauncherInput({
     if (shouldReset) {
       onReset?.();
     } else if (key === Gdk.KEY_Escape) {
-      onEscape?.();
+      onClose?.();
     } else if (key === Gdk.KEY_Return) {
-      onEnter?.();
+      onLaunch?.();
     } else if (key === Gdk.KEY_Up) {
       onUp?.();
     } else if (key === Gdk.KEY_Down) {
       onDown?.();
-    } else {
-      return false;
     }
-
-    return true;
   });
 
   return (
@@ -291,10 +303,9 @@ function LauncherInput({
 type ResultRowProps = {
   result: LauncherResult;
   selected: Accessor<boolean>;
-  onRun: () => void;
 };
 
-function ResultRow({ result, selected, onRun }: ResultRowProps) {
+function ResultRow({ result, selected }: ResultRowProps) {
   const subtitle = resultSubtitle(result);
   const icon = result.type !== "calc" && resultIcon(result);
 
@@ -302,7 +313,7 @@ function ResultRow({ result, selected, onRun }: ResultRowProps) {
     <button
       focusable={false}
       class={rowClass(selected.as((isSelected) => isSelected && "selected"))}
-      onClicked={onRun}
+      onClicked={() => launch(result)}
       hexpand
       halign={Gtk.Align.FILL}
     >
@@ -452,20 +463,59 @@ const resultSubtitle = (result: LauncherResult): string | false => {
   }
 };
 
+const fadeIn = defineAnimation({
+  keyframes: {
+    from: { opacity: 0 },
+    to: { opacity: 1 },
+  },
+  defaults: {
+    duration: TOGGLE_DURATION,
+    easing: "ease-out",
+    fillMode: "both",
+  },
+});
+
+const slideIn = defineAnimation({
+  keyframes: {
+    from: { transform: translateY(-24) },
+    to: { transform: translateY(0) },
+  },
+  defaults: {
+    duration: TOGGLE_DURATION * 0.9,
+    easing: "ease-out",
+    fillMode: "both",
+  },
+});
+
 const windowClass = defineStyle({
   style: {
     background: "transparent",
+    paddingTop: 32,
   },
-})();
+});
 
 const backdropClass = defineStyle({
   style: {
-    background: alpha("#000", 0.3),
+    background: alpha("#000", 0.4),
   },
-})();
+  variants: {
+    opening: {
+      animation: fadeIn({
+        duration: TOGGLE_DURATION,
+      }),
+    },
+    closing: {
+      animation: fadeIn({
+        direction: "reverse",
+        duration: TOGGLE_DURATION,
+      }),
+    },
+  },
+});
 
 const panelClass = defineStyle({
   style: {
+    transformOrigin: "top center",
     background: palette.activeBackground,
     backdropFilter: backdropBlur(),
     color: palette.text,
@@ -473,7 +523,18 @@ const panelClass = defineStyle({
     borderRadius: 12,
     border: `1px solid ${alpha(palette.text, 0.1)}`,
   },
-})();
+  variants: {
+    opening: {
+      animation: animations(slideIn(), fadeIn()),
+    },
+    closing: {
+      animation: animations(
+        slideIn({ direction: "reverse", easing: "ease-in-out" }),
+        fadeIn({ direction: "reverse", duration: TOGGLE_DURATION }),
+      ),
+    },
+  },
+});
 
 const entryWrapperClass = defineStyle({
   style: {

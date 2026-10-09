@@ -237,7 +237,7 @@ export const createLauncherModel = () => {
     const newMode = mode.peek();
 
     if (newMode === "calc") {
-      handleCalc(newText.trim());
+      handleCalc(newText.trim() || "0");
     } else if (newMode === "search") {
       handleSearch(newText);
     } else if (newMode === "exec") {

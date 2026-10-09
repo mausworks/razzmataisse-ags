@@ -16,7 +16,7 @@ export default function LauncherButton({
       visible={visible}
       onClicked={() => app.toggle_window("launcher")}
     >
-      <image iconName="go-next-symbolic" />
+      <image iconName="search-symbolic" />
     </BarButton>
   );
 }

@@ -1,5 +1,12 @@
 import { execAsync } from "ags/process";
 
+const SETTINGS = [
+  "decimal comma off",
+  "color off",
+  "space off",
+  "exp display e",
+];
+
 /**
  * Evaluates `expression` via `qalc` (libqalculate) and resolves its plain
  * result, or `null` on a parse error (qalc exits non-zero, which
@@ -13,6 +20,14 @@ import { execAsync } from "ags/process";
 export const evaluateMathExpression = (
   expression: string,
 ): Promise<string | null> =>
-  execAsync(["qalc", "-t", "-nocurrencies", "-time", "3000", expression])
+  execAsync([
+    "qalc",
+    "-t",
+    "-nocurrencies",
+    ...SETTINGS.map((setting) => ["-s", setting]).flat(),
+    "-time",
+    "3000",
+    expression,
+  ])
     .then((output) => output.trim() || null)
     .catch(() => null);
